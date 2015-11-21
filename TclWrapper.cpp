@@ -36,7 +36,7 @@ int TclWrapper::eval(Tcl_Interp* interpreter, const char* code) {
 }
 
 _Tcl_CreateObjCommandProto TclWrapper::_Tcl_CreateObjCommand;
-int TclWrapper::registerFunction(Tcl_Interp* interpreter, const char* fname, Tcl_ObjCmdProc* f, ClientData clientData = (ClientData) NULL, Tcl_CmdDeleteProc* deleteCallback = (Tcl_CmdDeleteProc *) NULL) {
+int TclWrapper::registerFunction(Tcl_Interp* interpreter, const char* fname, Tcl_ObjCmdProc* f, ClientData clientData = (ClientData) NULL, Tcl_CmdDeleteProc* deleteCallback = (Tcl_CmdDeleteProc*) NULL) {
 	if (handle == NULL) { return -1; } else {
 		_Tcl_CreateObjCommand(interpreter, fname, f, clientData, deleteCallback);
 		return TCL_OK;
