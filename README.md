@@ -12,7 +12,7 @@ Making it into a plugin is planned later once it matures.
 * copy *tcl.h*, *tclDecls.h*, *tclPlatDecls.h* from the [Tcl repo](https://github.com/tcltk/tcl) into the src of this project
 * put that src somewhere you can easily include it from into your UE project
 * possibly you will need to adjust the **_TCL_DLL_FNAME_** constant in the *TclWrapper.hpp* if it's not **"tcl86t.dll"**
-* include the *TclWrapper.hpp* wherever you need it
+* include the **TclWrapper.hpp** wherever you need it
 
 ### Usage
 * use Tcl_Interp\* TclWrapper::bootstrap() to bootstrap everything once and only once and get a new interpreter instance
