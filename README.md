@@ -8,7 +8,7 @@ Making it into a plugin is planned later once it matures.
 * run the **VS2015 x64 Native Tools Command Prompt** (use x32 version if you're building your UE project for x86_32 arch)
 * navigate to the directory you cloned [Tcl](http://wiki.tcl.tk/299) and then to its *win* sub-directory
 * run **buildall.vc.bat**, it will cry "BOOM!" because [Tk](https://en.wikipedia.org/wiki/Tk_(software)) is not present, but we don't need it
-* copy the Tcl dll into the sub-directory called *ThirdParty* in the root of your UE project
+* copy the [Tcl](http://wiki.tcl.tk/299) dll into the sub-directory called *ThirdParty* in the root of your UE project
 * copy *tcl.h*, *tclDecls.h*, *tclPlatDecls.h* from the [Tcl repo](https://github.com/tcltk/tcl) into the src of this project
 * put that src somewhere you can easily include it from into your UE project
 * possibly you will need to adjust the **_TCL_DLL_FNAME_** constant in the *TclWrapper.hpp* if it's not **"tcl86t.dll"**
