@@ -31,8 +31,12 @@
 class TCLEMBEDDING_API TclWrapper
 {
 private:
+	TclWrapper(bool);
+
 	static FString dllPath;
 	static void* handle;
+
+	Tcl_Interp* interpreter;
 
 	static _Tcl_CreateInterpProto _Tcl_CreateInterp;
 	static _Tcl_EvalProto _Tcl_Eval;
@@ -40,7 +44,9 @@ private:
 	
 	static _Tcl_SetStringObjProto _Tcl_SetStringObj;
 public:
-	static Tcl_Interp* bootstrap();
-	static int eval(Tcl_Interp*, const char*);
-	static int registerFunction(Tcl_Interp*, const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
+	static TSharedRef<TclWrapper> bootstrap();
+	int eval(const char*);
+	int registerFunction(const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
+
+	~TclWrapper();
 };

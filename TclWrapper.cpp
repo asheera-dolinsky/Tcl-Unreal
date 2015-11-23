@@ -25,19 +25,27 @@
 #include "TclEmbedding.h"
 #include "TclWrapper.hpp"
 
+TclWrapper::TclWrapper(bool bootstrapSuccess = true) {
+	interpreter = true? _Tcl_CreateInterp() : NULL;
+}
+
+TclWrapper::~TclWrapper() {
+	// free interpreter here!
+}
+
 FString TclWrapper::dllPath;
 void* TclWrapper::handle;
 _Tcl_CreateInterpProto TclWrapper::_Tcl_CreateInterp;
 
 _Tcl_EvalProto TclWrapper::_Tcl_Eval;
-int TclWrapper::eval(Tcl_Interp* interpreter, const char* code) {
-	if (handle == NULL) { return -1; }
+int TclWrapper::eval(const char* code) {
+	if (handle == NULL || interpreter == NULL ) { return -1; }
 	else { return _Tcl_Eval(interpreter, code); }
 }
 
 _Tcl_CreateObjCommandProto TclWrapper::_Tcl_CreateObjCommand;
-int TclWrapper::registerFunction(Tcl_Interp* interpreter, const char* fname, Tcl_ObjCmdProc* f, ClientData clientData = (ClientData) NULL, Tcl_CmdDeleteProc* deleteCallback = (Tcl_CmdDeleteProc*) NULL) {
-	if (handle == NULL) { return -1; } else {
+int TclWrapper::registerFunction(const char* fname, Tcl_ObjCmdProc* f, ClientData clientData = (ClientData) NULL, Tcl_CmdDeleteProc* deleteCallback = (Tcl_CmdDeleteProc*) NULL) {
+	if (handle == NULL || interpreter == NULL ) { return -1; } else {
 		_Tcl_CreateObjCommand(interpreter, fname, f, clientData, deleteCallback);
 		return TCL_OK;
 	}
@@ -45,9 +53,9 @@ int TclWrapper::registerFunction(Tcl_Interp* interpreter, const char* fname, Tcl
 
 _Tcl_SetStringObjProto TclWrapper::_Tcl_SetStringObj;
 
-Tcl_Interp* TclWrapper::bootstrap() {
+TSharedRef<TclWrapper> TclWrapper::bootstrap() {
 	if (handle != NULL) {
-		return _Tcl_CreateInterp();
+		return TSharedRef<TclWrapper>(new TclWrapper());
 	}
 	auto dllPath = FPaths::Combine(*FPaths::GameDir(), TEXT("ThirdParty/"), TEXT(_TCL_DLL_FNAME_));
 	if (FPaths::FileExists(dllPath)) {
@@ -70,9 +78,9 @@ Tcl_Interp* TclWrapper::bootstrap() {
 				handle = NULL;
 				UE_LOG(LogClass, Log, TEXT("Bootstrapping functions for Tcl failed!"))
 			}
-			else { return _Tcl_CreateInterp(); }
+			else { return TSharedRef<TclWrapper>(new TclWrapper()); }
 		}
 	}
 	else { UE_LOG(LogClass, Log, TEXT("Cannot find %s!"), _TCL_DLL_FNAME_) }
-	return NULL;
+	return TSharedRef<TclWrapper>(new TclWrapper(false));
 }
