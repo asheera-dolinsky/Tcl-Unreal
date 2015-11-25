@@ -24,11 +24,12 @@
 
 #pragma once
 
-#include "api.hpp"
-
+#define _PROJECT_API_ID_ EMBEDTCL_API
 #define _TCL_DLL_FNAME_ "tcl86t.dll"
 
-class TCLEMBEDDING_API TclWrapper
+#include "api.hpp"
+
+class _PROJECT_API_ID_ TclWrapper
 {
 private:
 	TclWrapper(bool);
@@ -43,6 +44,7 @@ private:
 	static _Tcl_CreateObjCommandProto _Tcl_CreateObjCommand;
 	
 	static _Tcl_SetStringObjProto _Tcl_SetStringObj;
+	static _Tcl_GetIntFromObjProto _Tcl_GetIntFromObj;
 public:
 	static TSharedRef<TclWrapper> bootstrap();
 	int eval(const char*);

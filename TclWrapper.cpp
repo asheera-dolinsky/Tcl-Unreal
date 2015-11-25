@@ -22,7 +22,7 @@
 *	 SOFTWARE.
 */
 
-#include "TclEmbedding.h"
+#include "EmbedTcl.h"
 #include "TclWrapper.hpp"
 
 TclWrapper::TclWrapper(bool bootstrapSuccess = true) {
@@ -52,6 +52,7 @@ int TclWrapper::registerFunction(const char* fname, Tcl_ObjCmdProc* f, ClientDat
 }
 
 _Tcl_SetStringObjProto TclWrapper::_Tcl_SetStringObj;
+_Tcl_GetIntFromObjProto TclWrapper::_Tcl_GetIntFromObj;
 
 TSharedRef<TclWrapper> TclWrapper::bootstrap() {
 	if (handle != NULL) {
@@ -71,10 +72,13 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap() {
 			_Tcl_CreateObjCommand = (_Tcl_CreateObjCommandProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_SetStringObj";
 			_Tcl_SetStringObj = (_Tcl_SetStringObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_GetIntFromObj";
+			_Tcl_GetIntFromObj = (_Tcl_GetIntFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			if (_Tcl_CreateInterp == NULL ||
 				_Tcl_Eval == NULL ||
 				_Tcl_CreateObjCommand == NULL ||
-				_Tcl_SetStringObj == NULL) {
+				_Tcl_SetStringObj == NULL ||
+				_Tcl_GetIntFromObj == NULL) {
 				handle = NULL;
 				UE_LOG(LogClass, Log, TEXT("Bootstrapping functions for Tcl failed!"))
 			}

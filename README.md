@@ -11,6 +11,8 @@ Making it into a plugin is planned later once it matures.
 * copy the [Tcl](http://wiki.tcl.tk/299) dll into the sub-directory called *ThirdParty* in the root of your UE project
 * copy *tcl.h*, *tclDecls.h*, *tclPlatDecls.h* from the [Tcl repo](https://github.com/tcltk/tcl) into the src of this project
 * put that src somewhere you can easily include it from into your UE project
+* adjust the *_PROJECT_API_ID_* to the one for your project (it should look something like this: ..._API) in the *TclWrapper.hpp*
+* adjust the first include in the *TclWrapper.cpp* to the main header of your project
 * possibly you will need to adjust the **_TCL_DLL_FNAME_** constant in the *TclWrapper.hpp* if it's not **"tcl86t.dll"**
 * include the **TclWrapper.hpp** wherever you need it
 
