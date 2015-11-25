@@ -51,9 +51,36 @@ int TclWrapper::registerFunction(const char* fname, Tcl_ObjCmdProc* f, ClientDat
 	}
 }
 
-_Tcl_SetStringObjProto TclWrapper::_Tcl_SetStringObj;
-_Tcl_GetIntFromObjProto TclWrapper::_Tcl_GetIntFromObj;
+_Tcl_GetObjResultProto TclWrapper::_Tcl_GetObjResult;
+int TclWrapper::getResult(Tcl_Interp* interpreter, Tcl_Obj** obj) {
+	if (handle == NULL || interpreter == NULL ) { return -1; }
+	else {
+		*obj = _Tcl_GetObjResult(interpreter);
+		return TCL_OK;
+	}
+}
 
+_Tcl_SetIntObjProto TclWrapper::_Tcl_SetIntObj;
+int TclWrapper::setInt(Tcl_Obj* obj, int val) {
+	if (handle == NULL) { return -1; } else {
+		_Tcl_SetIntObj(obj, val);
+		return TCL_OK;
+	}
+}
+
+_Tcl_SetStringObjProto TclWrapper::_Tcl_SetStringObj;
+int TclWrapper::setString(Tcl_Obj* obj, const char* str, int len) {
+	if (handle == NULL) { return -1; } else {
+		_Tcl_SetStringObj(obj, str, len);
+		return TCL_OK;
+	}
+}
+
+_Tcl_GetIntFromObjProto TclWrapper::_Tcl_GetIntFromObj;
+int TclWrapper::getInt(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
+	if (handle == NULL || interpreter == NULL ) { return -1; }
+	else { return _Tcl_GetIntFromObj(interpreter, obj, val); }
+}
 TSharedRef<TclWrapper> TclWrapper::bootstrap() {
 	if (handle != NULL) {
 		return TSharedRef<TclWrapper>(new TclWrapper());
@@ -70,14 +97,20 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap() {
 			_Tcl_Eval = (_Tcl_EvalProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_CreateObjCommand";
 			_Tcl_CreateObjCommand = (_Tcl_CreateObjCommandProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_GetObjResult";
+			_Tcl_GetObjResult = (_Tcl_GetObjResultProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_SetStringObj";
 			_Tcl_SetStringObj = (_Tcl_SetStringObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_SetIntObj";
+			_Tcl_SetIntObj = (_Tcl_SetIntObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_GetIntFromObj";
 			_Tcl_GetIntFromObj = (_Tcl_GetIntFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			if (_Tcl_CreateInterp == NULL ||
 				_Tcl_Eval == NULL ||
 				_Tcl_CreateObjCommand == NULL ||
+				_Tcl_GetObjResult == NULL ||
 				_Tcl_SetStringObj == NULL ||
+				_Tcl_SetIntObj == NULL ||
 				_Tcl_GetIntFromObj == NULL) {
 				handle = NULL;
 				UE_LOG(LogClass, Log, TEXT("Bootstrapping functions for Tcl failed!"))
