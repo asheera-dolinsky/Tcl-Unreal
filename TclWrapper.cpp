@@ -81,10 +81,15 @@ int TclWrapper::getInt(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
 	if (handle == NULL || interpreter == NULL ) { return -1; }
 	else { return _Tcl_GetIntFromObj(interpreter, obj, val); }
 }
+
+_Tcl_GetDoubleFromObjProto TclWrapper::_Tcl_GetDoubleFromObj;
+int TclWrapper::getDouble(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
+	if (handle == NULL || interpreter == NULL ) { return -1; }
+	else { return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
+}
+
 TSharedRef<TclWrapper> TclWrapper::bootstrap() {
-	if (handle != NULL) {
-		return TSharedRef<TclWrapper>(new TclWrapper());
-	}
+	if (handle != NULL) { return TSharedRef<TclWrapper>(new TclWrapper()); }
 	auto dllPath = FPaths::Combine(*FPaths::GameDir(), TEXT("ThirdParty/"), TEXT(_TCL_DLL_FNAME_));
 	if (FPaths::FileExists(dllPath)) {
 		handle = FPlatformProcess::GetDllHandle(*dllPath);
@@ -105,17 +110,23 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap() {
 			_Tcl_SetIntObj = (_Tcl_SetIntObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_GetIntFromObj";
 			_Tcl_GetIntFromObj = (_Tcl_GetIntFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_GetDoubleFromObj";
+			_Tcl_GetDoubleFromObj = (_Tcl_GetDoubleFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			if (_Tcl_CreateInterp == NULL ||
 				_Tcl_Eval == NULL ||
 				_Tcl_CreateObjCommand == NULL ||
 				_Tcl_GetObjResult == NULL ||
 				_Tcl_SetStringObj == NULL ||
 				_Tcl_SetIntObj == NULL ||
-				_Tcl_GetIntFromObj == NULL) {
+				_Tcl_GetIntFromObj == NULL ||
+				_Tcl_GetDoubleFromObj == NULL) {
 				handle = NULL;
 				UE_LOG(LogClass, Log, TEXT("Bootstrapping functions for Tcl failed!"))
 			}
-			else { return TSharedRef<TclWrapper>(new TclWrapper()); }
+			else {
+				UE_LOG(LogClass, Log, TEXT("Bootstrapping Tcl and its functions succeeded!"))
+				return TSharedRef<TclWrapper>(new TclWrapper());
+			}
 		}
 	}
 	else { UE_LOG(LogClass, Log, TEXT("Cannot find %s!"), _TCL_DLL_FNAME_) }

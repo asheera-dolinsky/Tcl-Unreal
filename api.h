@@ -30,3 +30,4 @@ typedef void (*_Tcl_SetStringObjProto)(Tcl_Obj*, const char*, int);
 typedef void (*_Tcl_SetIntObjProto)(Tcl_Obj*, int);
 typedef Tcl_Obj* (*_Tcl_GetObjResultProto)(Tcl_Interp*);
 typedef int (*_Tcl_GetIntFromObjProto)(Tcl_Interp*, Tcl_Obj*, int*);
+typedef int (*_Tcl_GetDoubleFromObjProto)(Tcl_Interp*, Tcl_Obj*, double*);
