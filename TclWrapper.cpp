@@ -76,6 +76,15 @@ int TclWrapper::getResult(Tcl_Interp* interpreter, Tcl_Obj** obj) {
 	}
 }
 
+// _Tcl_NewStringObjProto TclWrapper::_Tcl_NewStringObj;
+// Tcl_Obj* TclWrapper::newString(const char* val) {
+// 	return _Tcl_NewStringObj(val, -1);
+// }
+
+// _Tcl_NewLongObjProto TclWrapper::_Tcl_NewLongObj;
+// Tcl_Obj* TclWrapper::newLong(double val) {
+// 	return _Tcl_NewLongObj(val);
+// }
 _Tcl_NewStringObjProto TclWrapper::_Tcl_NewStringObj;
 int TclWrapper::newString(Tcl_Obj** obj, const char* val) {
 	if (handle == NULL) { return -1; }
