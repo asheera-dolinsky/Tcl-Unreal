@@ -45,6 +45,7 @@ private:
 	static _Tcl_CreateObjCommandProto _Tcl_CreateObjCommand;
 	
 	static _Tcl_ObjSetVar2Proto _Tcl_ObjSetVar2;
+	static _Tcl_ObjGetVar2Proto _Tcl_ObjGetVar2;
 	static _Tcl_SetStringObjProto _Tcl_SetStringObj;
 	static _Tcl_NewStringObjProto _Tcl_NewStringObj;
 	static _Tcl_NewLongObjProto _Tcl_NewLongObj;
@@ -54,9 +55,11 @@ private:
 	static _Tcl_GetDoubleFromObjProto _Tcl_GetDoubleFromObj;
 public:
 	static TSharedRef<TclWrapper> bootstrap();
+	bool bootstrapSuccess();
 	int eval(const char*);
 	int registerFunction(const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
 	int define(Tcl_Obj*, Tcl_Obj*, Tcl_Obj*, int);
+	int fetch(Tcl_Obj*, Tcl_Obj*, Tcl_Obj**, int);
 
 	static int newString(Tcl_Obj**, const char*);
 	static int newLong(Tcl_Obj**, double);
@@ -65,6 +68,7 @@ public:
 	static int setInt(Tcl_Obj*, int);
 	static int getResult(Tcl_Interp*, Tcl_Obj**);
 	static int getInt(Tcl_Interp*, Tcl_Obj*, int*);
+	int getInt(Tcl_Obj*, int*);
 	static int getDouble(Tcl_Interp*, Tcl_Obj*, double*);
 
 	~TclWrapper();

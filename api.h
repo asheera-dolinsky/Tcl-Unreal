@@ -32,5 +32,8 @@ typedef Tcl_Obj* (*_Tcl_GetObjResultProto)(Tcl_Interp*);
 typedef Tcl_Obj* (*_Tcl_NewStringObjProto)(const char*, int);
 typedef Tcl_Obj* (*_Tcl_NewLongObjProto)(long);
 typedef Tcl_Obj* (*_Tcl_ObjSetVar2Proto)(Tcl_Interp*, Tcl_Obj*, Tcl_Obj*, Tcl_Obj*, int);
+typedef Tcl_Obj* (*_Tcl_ObjGetVar2Proto)(Tcl_Interp*, Tcl_Obj*, Tcl_Obj*, int);
 typedef int (*_Tcl_GetIntFromObjProto)(Tcl_Interp*, Tcl_Obj*, int*);
 typedef int (*_Tcl_GetDoubleFromObjProto)(Tcl_Interp*, Tcl_Obj*, double*);
+
+#define _TCL_BOOTSTRAP_FAIL_ -1
