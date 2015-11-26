@@ -26,36 +26,70 @@
 #include "TclWrapper.hpp"
 
 TclWrapper::TclWrapper(bool bootstrapSuccess = true) {
-	interpreter = true? _Tcl_CreateInterp() : NULL;
+	if(bootstrapSuccess) {
+		interpreter = _Tcl_CreateInterp();
+		UE_LOG(LogClass, Log, TEXT("Allocated %i bytes for a Tcl interpreter"), interpreterSize)
+	} else {
+		interpreter = NULL;
+		UE_LOG(LogClass, Log, TEXT("Failed to Allocate a Tcl interpreter"))
+	}
 }
 
 TclWrapper::~TclWrapper() {
 	// free interpreter here!
 }
 
-FString TclWrapper::dllPath;
-void* TclWrapper::handle;
+void* TclWrapper::handle = NULL;
+int TclWrapper::interpreterSize = 0;
+
 _Tcl_CreateInterpProto TclWrapper::_Tcl_CreateInterp;
 
 _Tcl_EvalProto TclWrapper::_Tcl_Eval;
 int TclWrapper::eval(const char* code) {
-	if (handle == NULL || interpreter == NULL ) { return -1; }
+	if (handle == NULL || interpreter == NULL) { return -1; }
 	else { return _Tcl_Eval(interpreter, code); }
 }
 
 _Tcl_CreateObjCommandProto TclWrapper::_Tcl_CreateObjCommand;
 int TclWrapper::registerFunction(const char* fname, Tcl_ObjCmdProc* f, ClientData clientData = (ClientData) NULL, Tcl_CmdDeleteProc* deleteCallback = (Tcl_CmdDeleteProc*) NULL) {
-	if (handle == NULL || interpreter == NULL ) { return -1; } else {
+	if (handle == NULL || interpreter == NULL) { return -1; } else {
 		_Tcl_CreateObjCommand(interpreter, fname, f, clientData, deleteCallback);
+		return TCL_OK;
+	}
+}
+
+_Tcl_ObjSetVar2Proto TclWrapper::_Tcl_ObjSetVar2;
+int TclWrapper::define(Tcl_Obj* location, Tcl_Obj* scope, Tcl_Obj* val, int flags) {
+	if (handle == NULL || interpreter == NULL) { return -1; }
+	else {
+		_Tcl_ObjSetVar2(interpreter, location, scope, val, flags);
 		return TCL_OK;
 	}
 }
 
 _Tcl_GetObjResultProto TclWrapper::_Tcl_GetObjResult;
 int TclWrapper::getResult(Tcl_Interp* interpreter, Tcl_Obj** obj) {
-	if (handle == NULL || interpreter == NULL ) { return -1; }
+	if (handle == NULL || interpreter == NULL) { return -1; }
 	else {
 		*obj = _Tcl_GetObjResult(interpreter);
+		return TCL_OK;
+	}
+}
+
+_Tcl_NewStringObjProto TclWrapper::_Tcl_NewStringObj;
+int TclWrapper::newString(Tcl_Obj** obj, const char* val) {
+	if (handle == NULL) { return -1; }
+	else {
+		*obj = _Tcl_NewStringObj(val, -1);
+		return TCL_OK;
+	}
+}
+
+_Tcl_NewLongObjProto TclWrapper::_Tcl_NewLongObj;
+int TclWrapper::newLong(Tcl_Obj** obj, double val) {
+	if (handle == NULL) { return -1; }
+	else {
+		*obj = _Tcl_NewLongObj(val);
 		return TCL_OK;
 	}
 }
@@ -102,10 +136,16 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap() {
 			_Tcl_Eval = (_Tcl_EvalProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_CreateObjCommand";
 			_Tcl_CreateObjCommand = (_Tcl_CreateObjCommandProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_ObjSetVar2";
+			_Tcl_ObjSetVar2 = (_Tcl_ObjSetVar2Proto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_GetObjResult";
 			_Tcl_GetObjResult = (_Tcl_GetObjResultProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_SetStringObj";
 			_Tcl_SetStringObj = (_Tcl_SetStringObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_NewStringObj";
+			_Tcl_NewStringObj = (_Tcl_NewStringObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_NewLongObj";
+			_Tcl_NewLongObj = (_Tcl_NewLongObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_SetIntObj";
 			_Tcl_SetIntObj = (_Tcl_SetIntObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_GetIntFromObj";
@@ -115,8 +155,11 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap() {
 			if (_Tcl_CreateInterp == NULL ||
 				_Tcl_Eval == NULL ||
 				_Tcl_CreateObjCommand == NULL ||
+				_Tcl_ObjSetVar2 == NULL ||
 				_Tcl_GetObjResult == NULL ||
 				_Tcl_SetStringObj == NULL ||
+				_Tcl_NewStringObj == NULL ||
+				_Tcl_NewLongObj == NULL ||
 				_Tcl_SetIntObj == NULL ||
 				_Tcl_GetIntFromObj == NULL ||
 				_Tcl_GetDoubleFromObj == NULL) {
@@ -125,6 +168,7 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap() {
 			}
 			else {
 				UE_LOG(LogClass, Log, TEXT("Bootstrapping Tcl and its functions succeeded!"))
+				interpreterSize = (int)sizeof(Tcl_Interp);
 				return TSharedRef<TclWrapper>(new TclWrapper());
 			}
 		}
