@@ -58,8 +58,6 @@ public:
 	int registerFunction(const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
 	int define(Tcl_Obj*, Tcl_Obj*, Tcl_Obj*, int);
 
-	// static Tcl_Obj* newString(const char*);
-	// static Tcl_Obj* newLong(double);
 	static int newString(Tcl_Obj**, const char*);
 	static int newLong(Tcl_Obj**, double);
 
