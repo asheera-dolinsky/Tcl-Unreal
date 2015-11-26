@@ -25,9 +25,10 @@
 #include "EmbedTcl.h"
 #include "TclWrapper.hpp"
 
-TclWrapper::TclWrapper(bool bootstrapSuccess = true) {
+TclWrapper::TclWrapper(bool bootstrapSuccess = false, uint32 _id = 0) {
 	if(bootstrapSuccess) {
 		interpreter = _Tcl_CreateInterp();
+		registerId(_id);
 		UE_LOG(LogClass, Log, TEXT("Allocated %i bytes for a Tcl interpreter"), interpreterSize)
 	} else {
 		interpreter = NULL;
@@ -40,7 +41,8 @@ TclWrapper::~TclWrapper() {
 }
 
 void* TclWrapper::handle = NULL;
-int TclWrapper::interpreterSize = 0;
+size_t TclWrapper::interpreterSize = 0;
+const char* TclWrapper::__id__ = "__id__";
 
 _Tcl_CreateInterpProto TclWrapper::_Tcl_CreateInterp;
 
@@ -80,6 +82,39 @@ int TclWrapper::fetch(Tcl_Obj* location, Tcl_Obj* scope, Tcl_Obj** val, int flag
 	}
 }
 
+int TclWrapper::registerId(uint32 _id) {
+	if (handle == NULL || interpreter == NULL) { return _TCL_BOOTSTRAP_FAIL_; }
+	else {
+		Tcl_Obj* __id__;
+		TclWrapper::newString(&__id__, TclWrapper::__id__);
+		Tcl_Obj* id;
+		TclWrapper::newLong(&id, (long)_id);
+		_Tcl_ObjSetVar2(interpreter, __id__, NULL, id, TCL_GLOBAL_ONLY);
+		return TCL_OK;
+	}
+}
+
+int TclWrapper::id(Tcl_Interp* interpreter, uint32* _id) {
+	if (handle == NULL || interpreter == NULL) { return _TCL_BOOTSTRAP_FAIL_; }
+	else {
+		Tcl_Obj* __id__;
+		TclWrapper::newString(&__id__, TclWrapper::__id__);
+		auto _idObj = _Tcl_ObjGetVar2(interpreter, __id__, NULL, TCL_GLOBAL_ONLY);
+		long __id;
+		auto status = toLong(interpreter, _idObj, &__id);
+		*_id = (uint32)__id;
+		return status;
+	}
+}
+int TclWrapper::id(uint32* _id) {
+	return id(interpreter, _id);
+}
+uint32 TclWrapper::id() {
+	uint32 _id;
+	id(interpreter, &_id);
+	return _id;
+}
+
 _Tcl_GetObjResultProto TclWrapper::_Tcl_GetObjResult;
 int TclWrapper::getResult(Tcl_Interp* interpreter, Tcl_Obj** obj) {
 	if (handle == NULL || interpreter == NULL) { return _TCL_BOOTSTRAP_FAIL_; }
@@ -99,7 +134,7 @@ int TclWrapper::newString(Tcl_Obj** obj, const char* val) {
 }
 
 _Tcl_NewLongObjProto TclWrapper::_Tcl_NewLongObj;
-int TclWrapper::newLong(Tcl_Obj** obj, double val) {
+int TclWrapper::newLong(Tcl_Obj** obj, long val) {
 	if (handle == NULL) { return _TCL_BOOTSTRAP_FAIL_; }
 	else {
 		*obj = _Tcl_NewLongObj(val);
@@ -124,22 +159,27 @@ int TclWrapper::setString(Tcl_Obj* obj, const char* str, int len) {
 }
 
 _Tcl_GetIntFromObjProto TclWrapper::_Tcl_GetIntFromObj;
-int TclWrapper::getInt(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
+int TclWrapper::toInt(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
 	if (handle == NULL || interpreter == NULL ) { return _TCL_BOOTSTRAP_FAIL_; }
 	else { return _Tcl_GetIntFromObj(interpreter, obj, val); }
 }
-int TclWrapper::getInt(Tcl_Obj* obj, int* val) {
-	return TclWrapper::_Tcl_GetIntFromObj(interpreter, obj, val);
+int TclWrapper::toInt(Tcl_Obj* obj, int* val) { return toInt(interpreter, obj, val); }
+
+_Tcl_GetLongFromObjProto TclWrapper::_Tcl_GetLongFromObj;
+int TclWrapper::toLong(Tcl_Interp* interpreter, Tcl_Obj* obj, long* val) {
+	if (handle == NULL || interpreter == NULL ) { return _TCL_BOOTSTRAP_FAIL_; }
+	else { return _Tcl_GetLongFromObj(interpreter, obj, val); }
 }
+int TclWrapper::toLong(Tcl_Obj* obj, long* val) { return toLong(interpreter, obj, val); }
 
 _Tcl_GetDoubleFromObjProto TclWrapper::_Tcl_GetDoubleFromObj;
-int TclWrapper::getDouble(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
+int TclWrapper::toDouble(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
 	if (handle == NULL || interpreter == NULL ) { return _TCL_BOOTSTRAP_FAIL_; }
 	else { return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
 }
 
-TSharedRef<TclWrapper> TclWrapper::bootstrap() {
-	if (handle != NULL) { return TSharedRef<TclWrapper>(new TclWrapper()); }
+TSharedRef<TclWrapper> TclWrapper::bootstrap(uint32 _id) {
+	if (handle != NULL) { return TSharedRef<TclWrapper>(new TclWrapper(true, _id)); }
 	auto dllPath = FPaths::Combine(*FPaths::GameDir(), TEXT("ThirdParty/"), TEXT(_TCL_DLL_FNAME_));
 	if (FPaths::FileExists(dllPath)) {
 		handle = FPlatformProcess::GetDllHandle(*dllPath);
@@ -168,6 +208,8 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap() {
 			_Tcl_SetIntObj = (_Tcl_SetIntObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_GetIntFromObj";
 			_Tcl_GetIntFromObj = (_Tcl_GetIntFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_GetLongFromObj";
+			_Tcl_GetLongFromObj = (_Tcl_GetLongFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_GetDoubleFromObj";
 			_Tcl_GetDoubleFromObj = (_Tcl_GetDoubleFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			if (_Tcl_CreateInterp == NULL ||
@@ -181,17 +223,18 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap() {
 				_Tcl_NewLongObj == NULL ||
 				_Tcl_SetIntObj == NULL ||
 				_Tcl_GetIntFromObj == NULL ||
+				_Tcl_GetLongFromObj == NULL ||
 				_Tcl_GetDoubleFromObj == NULL) {
 				handle = NULL;
-				UE_LOG(LogClass, Log, TEXT("Bootstrapping functions for Tcl failed!"))
+				UE_LOG(LogClass, Log, TEXT("Bootstrapping one or more functions for Tcl failed!"))
 			}
 			else {
 				UE_LOG(LogClass, Log, TEXT("Bootstrapping Tcl and its functions succeeded!"))
 				interpreterSize = (int)sizeof(Tcl_Interp);
-				return TSharedRef<TclWrapper>(new TclWrapper());
+				return TSharedRef<TclWrapper>(new TclWrapper(true, _id));
 			}
 		}
 	}
 	else { UE_LOG(LogClass, Log, TEXT("Cannot find %s!"), _TCL_DLL_FNAME_) }
-	return TSharedRef<TclWrapper>(new TclWrapper(false));
+	return TSharedRef<TclWrapper>(new TclWrapper());
 }

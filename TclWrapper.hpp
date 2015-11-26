@@ -31,14 +31,16 @@
 
 class _PROJECT_API_ID_ TclWrapper
 {
-private:
-	TclWrapper(bool);
+protected:
+	TclWrapper(bool, uint32);
 
-	//static FString dllPath;
 	static void* handle;
-	static int interpreterSize;
+	static size_t interpreterSize;
+	static const char* __id__;
 
 	Tcl_Interp* interpreter;
+
+	int registerId(uint32);
 
 	static _Tcl_CreateInterpProto _Tcl_CreateInterp;
 	static _Tcl_EvalProto _Tcl_Eval;
@@ -52,24 +54,31 @@ private:
 	static _Tcl_SetIntObjProto _Tcl_SetIntObj;
 	static _Tcl_GetObjResultProto _Tcl_GetObjResult;
 	static _Tcl_GetIntFromObjProto _Tcl_GetIntFromObj;
+	static _Tcl_GetLongFromObjProto _Tcl_GetLongFromObj;
 	static _Tcl_GetDoubleFromObjProto _Tcl_GetDoubleFromObj;
 public:
-	static TSharedRef<TclWrapper> bootstrap();
+	static TSharedRef<TclWrapper> bootstrap(uint32);
 	bool bootstrapSuccess();
 	int eval(const char*);
 	int registerFunction(const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
 	int define(Tcl_Obj*, Tcl_Obj*, Tcl_Obj*, int);
 	int fetch(Tcl_Obj*, Tcl_Obj*, Tcl_Obj**, int);
 
+	static int id(Tcl_Interp*, uint32*);
+	int id(uint32*);
+	uint32 id();
+
 	static int newString(Tcl_Obj**, const char*);
-	static int newLong(Tcl_Obj**, double);
+	static int newLong(Tcl_Obj**, long);
 
 	static int setString(Tcl_Obj*, const char*, int);
 	static int setInt(Tcl_Obj*, int);
 	static int getResult(Tcl_Interp*, Tcl_Obj**);
-	static int getInt(Tcl_Interp*, Tcl_Obj*, int*);
-	int getInt(Tcl_Obj*, int*);
-	static int getDouble(Tcl_Interp*, Tcl_Obj*, double*);
+	static int toInt(Tcl_Interp*, Tcl_Obj*, int*);
+	int toInt(Tcl_Obj*, int*);
+	static int toLong(Tcl_Interp*, Tcl_Obj*, long*);
+	int toLong(Tcl_Obj*, long*);
+	static int toDouble(Tcl_Interp*, Tcl_Obj*, double*);
 
 	~TclWrapper();
 };
