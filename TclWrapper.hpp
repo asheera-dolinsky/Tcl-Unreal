@@ -65,6 +65,7 @@ public:
 	int fetch(Tcl_Obj*, Tcl_Obj*, Tcl_Obj**, int);
 
 	static int id(Tcl_Interp*, uint32*);
+	static uint32 id(Tcl_Interp*);
 	int id(uint32*);
 	uint32 id();
 

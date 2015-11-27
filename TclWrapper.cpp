@@ -106,6 +106,12 @@ int TclWrapper::id(Tcl_Interp* interpreter, uint32* _id) {
 		return status;
 	}
 }
+uint32 TclWrapper::id(Tcl_Interp* interpreter) {
+	uint32 _id;
+	TclWrapper::id(interpreter, &_id);
+	return _id;
+}
+
 int TclWrapper::id(uint32* _id) {
 	return id(interpreter, _id);
 }
