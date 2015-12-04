@@ -31,7 +31,7 @@ TclWrapper::TclWrapper(bool bootstrapSuccess = false, uint32 _id = 0) {
 		registerId(_id);
 		UE_LOG(LogClass, Log, TEXT("Allocated %i bytes for a Tcl interpreter"), interpreterSize)
 	} else {
-		interpreter = NULL;
+		interpreter = nullptr;
 		UE_LOG(LogClass, Log, TEXT("Failed to Allocate a Tcl interpreter"))
 	}
 }
@@ -40,33 +40,65 @@ TclWrapper::~TclWrapper() {
 	// free interpreter here!
 }
 
-void* TclWrapper::handle = NULL;
+void* TclWrapper::handle = nullptr;
 size_t TclWrapper::interpreterSize = 0;
 const char* TclWrapper::__id__ = "__id__";
 
 _Tcl_CreateInterpProto TclWrapper::_Tcl_CreateInterp;
 
 bool TclWrapper::bootstrapSuccess() {
-	return !(handle == NULL || interpreter == NULL);
+	return !(handle == nullptr || interpreter == nullptr);
 }
 
 _Tcl_EvalProto TclWrapper::_Tcl_Eval;
 int TclWrapper::eval(const char* code) {
-	if (handle == NULL || interpreter == NULL) { return _TCL_BOOTSTRAP_FAIL_; }
+	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 	else { return _Tcl_Eval(interpreter, code); }
 }
 
 _Tcl_CreateObjCommandProto TclWrapper::_Tcl_CreateObjCommand;
-int TclWrapper::registerFunction(const char* fname, Tcl_ObjCmdProc* f, ClientData clientData = (ClientData) NULL, Tcl_CmdDeleteProc* deleteCallback = (Tcl_CmdDeleteProc*) NULL) {
-	if (handle == NULL || interpreter == NULL) { return _TCL_BOOTSTRAP_FAIL_; } else {
+int TclWrapper::registerFunction(const char* fname, Tcl_ObjCmdProc* f, ClientData clientData = (ClientData)nullptr, Tcl_CmdDeleteProc* deleteCallback = (Tcl_CmdDeleteProc*)nullptr) {
+	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 		_Tcl_CreateObjCommand(interpreter, fname, f, clientData, deleteCallback);
+		return TCL_OK;
+	}
+}
+
+template<typename cls, typename returnType, typename ...paramTypes> int TclWrapper::bind(FString name, cls* self) {
+	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+		auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const args[]) -> int {
+			if ((numberOfArgs < 3) || (numberOfArgs > 3)) {
+				UE_LOG(LogClass, Log, TEXT("Tcl: wrong # of args for the proc -> moveToLoc x y"))
+				return TCL_ERROR;
+			}
+			auto arg1 = const_cast<Tcl_Obj*>(args[1]);
+			double _arg1;
+			if (TclWrapper::toDouble(interpreter, arg1, &_arg1) == TCL_ERROR) return TCL_ERROR;
+			auto arg2 = const_cast<Tcl_Obj*>(args[2]);
+			double _arg2;
+			if (TclWrapper::toDouble(interpreter, arg2, &_arg2) == TCL_ERROR) return TCL_ERROR;
+
+			auto self = (cls*)clientData;
+
+			TBaseDelegate<returnType> WriteToLogDelegate;
+			WriteToLogDelegate.BindUFunction(self, "hello");
+			WriteToLogDelegate.ExecuteIfBound();
+
+			TBaseDelegate<returnType, paramTypes...> WriteToLogDelegate2;
+			WriteToLogDelegate2.BindUFunction(self, "hello2");
+			WriteToLogDelegate2.ExecuteIfBound("hello!");
+
+			return TCL_OK;
+		};
+		const char* fname = TCHAR_TO_ANSI(*name);
+		_Tcl_CreateObjCommand(interpreter, fname, wrapper, (ClientData)self, (Tcl_CmdDeleteProc*)nullptr);
 		return TCL_OK;
 	}
 }
 
 _Tcl_ObjSetVar2Proto TclWrapper::_Tcl_ObjSetVar2;
 int TclWrapper::define(Tcl_Obj* location, Tcl_Obj* scope, Tcl_Obj* val, int flags) {
-	if (handle == NULL || interpreter == NULL) { return _TCL_BOOTSTRAP_FAIL_; }
+	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 	else {
 		_Tcl_ObjSetVar2(interpreter, location, scope, val, flags);
 		return TCL_OK;
@@ -75,7 +107,7 @@ int TclWrapper::define(Tcl_Obj* location, Tcl_Obj* scope, Tcl_Obj* val, int flag
 
 _Tcl_ObjGetVar2Proto TclWrapper::_Tcl_ObjGetVar2;
 int TclWrapper::fetch(Tcl_Obj* location, Tcl_Obj* scope, Tcl_Obj** val, int flags) {
-	if (handle == NULL || interpreter == NULL) { return _TCL_BOOTSTRAP_FAIL_; }
+	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 	else {
 		*val = _Tcl_ObjGetVar2(interpreter, location, scope, flags);
 		return TCL_OK;
@@ -83,23 +115,23 @@ int TclWrapper::fetch(Tcl_Obj* location, Tcl_Obj* scope, Tcl_Obj** val, int flag
 }
 
 int TclWrapper::registerId(uint32 _id) {
-	if (handle == NULL || interpreter == NULL) { return _TCL_BOOTSTRAP_FAIL_; }
+	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 	else {
 		Tcl_Obj* __id__;
 		TclWrapper::newString(&__id__, TclWrapper::__id__);
 		Tcl_Obj* id;
 		TclWrapper::newLong(&id, (long)_id);
-		_Tcl_ObjSetVar2(interpreter, __id__, NULL, id, TCL_GLOBAL_ONLY);
+		_Tcl_ObjSetVar2(interpreter, __id__, nullptr, id, TCL_GLOBAL_ONLY);
 		return TCL_OK;
 	}
 }
 
 int TclWrapper::id(Tcl_Interp* interpreter, uint32* _id) {
-	if (handle == NULL || interpreter == NULL) { return _TCL_BOOTSTRAP_FAIL_; }
+	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 	else {
 		Tcl_Obj* __id__;
 		TclWrapper::newString(&__id__, TclWrapper::__id__);
-		auto _idObj = _Tcl_ObjGetVar2(interpreter, __id__, NULL, TCL_GLOBAL_ONLY);
+		auto _idObj = _Tcl_ObjGetVar2(interpreter, __id__, nullptr, TCL_GLOBAL_ONLY);
 		long __id;
 		auto status = toLong(interpreter, _idObj, &__id);
 		*_id = (uint32)__id;
@@ -123,7 +155,7 @@ uint32 TclWrapper::id() {
 
 _Tcl_GetObjResultProto TclWrapper::_Tcl_GetObjResult;
 int TclWrapper::getResult(Tcl_Interp* interpreter, Tcl_Obj** obj) {
-	if (handle == NULL || interpreter == NULL) { return _TCL_BOOTSTRAP_FAIL_; }
+	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 	else {
 		*obj = _Tcl_GetObjResult(interpreter);
 		return TCL_OK;
@@ -132,7 +164,7 @@ int TclWrapper::getResult(Tcl_Interp* interpreter, Tcl_Obj** obj) {
 
 _Tcl_NewStringObjProto TclWrapper::_Tcl_NewStringObj;
 int TclWrapper::newString(Tcl_Obj** obj, const char* val) {
-	if (handle == NULL) { return _TCL_BOOTSTRAP_FAIL_; }
+	if (handle == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 	else {
 		*obj = _Tcl_NewStringObj(val, -1);
 		return TCL_OK;
@@ -141,7 +173,7 @@ int TclWrapper::newString(Tcl_Obj** obj, const char* val) {
 
 _Tcl_NewLongObjProto TclWrapper::_Tcl_NewLongObj;
 int TclWrapper::newLong(Tcl_Obj** obj, long val) {
-	if (handle == NULL) { return _TCL_BOOTSTRAP_FAIL_; }
+	if (handle == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 	else {
 		*obj = _Tcl_NewLongObj(val);
 		return TCL_OK;
@@ -150,7 +182,7 @@ int TclWrapper::newLong(Tcl_Obj** obj, long val) {
 
 _Tcl_SetIntObjProto TclWrapper::_Tcl_SetIntObj;
 int TclWrapper::setInt(Tcl_Obj* obj, int val) {
-	if (handle == NULL) { return _TCL_BOOTSTRAP_FAIL_; } else {
+	if (handle == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 		_Tcl_SetIntObj(obj, val);
 		return TCL_OK;
 	}
@@ -158,7 +190,7 @@ int TclWrapper::setInt(Tcl_Obj* obj, int val) {
 
 _Tcl_SetStringObjProto TclWrapper::_Tcl_SetStringObj;
 int TclWrapper::setString(Tcl_Obj* obj, const char* str, int len) {
-	if (handle == NULL) { return _TCL_BOOTSTRAP_FAIL_; } else {
+	if (handle == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 		_Tcl_SetStringObj(obj, str, len);
 		return TCL_OK;
 	}
@@ -166,30 +198,46 @@ int TclWrapper::setString(Tcl_Obj* obj, const char* str, int len) {
 
 _Tcl_GetIntFromObjProto TclWrapper::_Tcl_GetIntFromObj;
 int TclWrapper::toInt(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
-	if (handle == NULL || interpreter == NULL ) { return _TCL_BOOTSTRAP_FAIL_; }
+	if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
 	else { return _Tcl_GetIntFromObj(interpreter, obj, val); }
 }
 int TclWrapper::toInt(Tcl_Obj* obj, int* val) { return toInt(interpreter, obj, val); }
 
 _Tcl_GetLongFromObjProto TclWrapper::_Tcl_GetLongFromObj;
 int TclWrapper::toLong(Tcl_Interp* interpreter, Tcl_Obj* obj, long* val) {
-	if (handle == NULL || interpreter == NULL ) { return _TCL_BOOTSTRAP_FAIL_; }
+	if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
 	else { return _Tcl_GetLongFromObj(interpreter, obj, val); }
 }
 int TclWrapper::toLong(Tcl_Obj* obj, long* val) { return toLong(interpreter, obj, val); }
 
 _Tcl_GetDoubleFromObjProto TclWrapper::_Tcl_GetDoubleFromObj;
 int TclWrapper::toDouble(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
-	if (handle == NULL || interpreter == NULL ) { return _TCL_BOOTSTRAP_FAIL_; }
+	if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
+	else { return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
+}
+
+template <typename T> int TclWrapper::convert(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
+	return 0;
+}
+template <> int TclWrapper::convert<int>(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
+	if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
+	else { return _Tcl_GetIntFromObj(interpreter, obj, val); }
+}
+template <> int TclWrapper::convert<long>(Tcl_Interp* interpreter, Tcl_Obj* obj, long* val) {
+	if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
+	else { return _Tcl_GetLongFromObj(interpreter, obj, val); }
+}
+template <> int TclWrapper::convert<double>(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
+	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 	else { return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
 }
 
 TSharedRef<TclWrapper> TclWrapper::bootstrap(uint32 _id) {
-	if (handle != NULL) { return TSharedRef<TclWrapper>(new TclWrapper(true, _id)); }
+	if (handle != nullptr) { return TSharedRef<TclWrapper>(new TclWrapper(true, _id)); }
 	auto dllPath = FPaths::Combine(*FPaths::GameDir(), TEXT("ThirdParty/"), TEXT(_TCL_DLL_FNAME_));
 	if (FPaths::FileExists(dllPath)) {
 		handle = FPlatformProcess::GetDllHandle(*dllPath);
-		if (handle == NULL) { UE_LOG(LogClass, Log, TEXT("Tcl bootstrapping failed")) }
+		if (handle == nullptr) { UE_LOG(LogClass, Log, TEXT("Tcl bootstrapping failed")) }
 		else {
 			FString procName = "";
 			procName = "Tcl_CreateInterp";
@@ -218,20 +266,20 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap(uint32 _id) {
 			_Tcl_GetLongFromObj = (_Tcl_GetLongFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_GetDoubleFromObj";
 			_Tcl_GetDoubleFromObj = (_Tcl_GetDoubleFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
-			if (_Tcl_CreateInterp == NULL ||
-				_Tcl_Eval == NULL ||
-				_Tcl_CreateObjCommand == NULL ||
-				_Tcl_ObjSetVar2 == NULL ||
-				_Tcl_ObjGetVar2 == NULL ||
-				_Tcl_GetObjResult == NULL ||
-				_Tcl_SetStringObj == NULL ||
-				_Tcl_NewStringObj == NULL ||
-				_Tcl_NewLongObj == NULL ||
-				_Tcl_SetIntObj == NULL ||
-				_Tcl_GetIntFromObj == NULL ||
-				_Tcl_GetLongFromObj == NULL ||
-				_Tcl_GetDoubleFromObj == NULL) {
-				handle = NULL;
+			if (_Tcl_CreateInterp == nullptr ||
+				_Tcl_Eval == nullptr ||
+				_Tcl_CreateObjCommand == nullptr ||
+				_Tcl_ObjSetVar2 == nullptr ||
+				_Tcl_ObjGetVar2 == nullptr ||
+				_Tcl_GetObjResult == nullptr ||
+				_Tcl_SetStringObj == nullptr ||
+				_Tcl_NewStringObj == nullptr ||
+				_Tcl_NewLongObj == nullptr ||
+				_Tcl_SetIntObj == nullptr ||
+				_Tcl_GetIntFromObj == nullptr ||
+				_Tcl_GetLongFromObj == nullptr ||
+				_Tcl_GetDoubleFromObj == nullptr) {
+				handle = nullptr;
 				UE_LOG(LogClass, Log, TEXT("Bootstrapping one or more functions for Tcl failed!"))
 			}
 			else {

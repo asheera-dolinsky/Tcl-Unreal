@@ -42,6 +42,11 @@ protected:
 
 	int registerId(uint32);
 
+	template <typename T> static int convert(Tcl_Interp*, Tcl_Obj*, T*);
+	template <> static int convert<int>(Tcl_Interp*, Tcl_Obj*, int*);
+	template <> static int convert<long>(Tcl_Interp*, Tcl_Obj*, long*);
+	template <> static int convert<double>(Tcl_Interp*, Tcl_Obj*, double*);
+
 	static _Tcl_CreateInterpProto _Tcl_CreateInterp;
 	static _Tcl_EvalProto _Tcl_Eval;
 	static _Tcl_CreateObjCommandProto _Tcl_CreateObjCommand;
@@ -61,6 +66,7 @@ public:
 	bool bootstrapSuccess();
 	int eval(const char*);
 	int registerFunction(const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
+	template<typename cls, typename returnType, typename ...paramTypes> int bind(FString, cls*);
 	int define(Tcl_Obj*, Tcl_Obj*, Tcl_Obj*, int);
 	int fetch(Tcl_Obj*, Tcl_Obj*, Tcl_Obj**, int);
 
@@ -80,6 +86,7 @@ public:
 	static int toLong(Tcl_Interp*, Tcl_Obj*, long*);
 	int toLong(Tcl_Obj*, long*);
 	static int toDouble(Tcl_Interp*, Tcl_Obj*, double*);
+
 
 	~TclWrapper();
 };
