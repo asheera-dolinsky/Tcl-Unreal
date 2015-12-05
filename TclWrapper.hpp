@@ -28,6 +28,21 @@
 #define _TCL_DLL_FNAME_ "tcl86t.dll"
 
 #include "api.hpp"
+#include "tupleUtils.hpp"
+
+template <typename TupleSpecialization, int len, Tcl_Obj* objects[len], typename Last> static void fromTuple(TupleSpecialization& tup) {
+}
+
+template <typename TupleSpecialization, int len, Tcl_Obj* objects[len], typename First, typename Second, typename ...Rest> static void fromTuple(TupleSpecialization& tup) {
+	//arr[sizeof...(Rest)] = sizeof...(Rest);
+	std::get<0>(tup);
+}
+
+template <typename T>
+struct WrapperContainer {
+	T* self;
+	FString name;
+};
 
 class _PROJECT_API_ID_ TclWrapper
 {
@@ -66,7 +81,6 @@ public:
 	bool bootstrapSuccess();
 	int eval(const char*);
 	int registerFunction(const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
-	template<typename cls, typename returnType, typename ...paramTypes> int bind(FString, cls*);
 	int define(Tcl_Obj*, Tcl_Obj*, Tcl_Obj*, int);
 	int fetch(Tcl_Obj*, Tcl_Obj*, Tcl_Obj**, int);
 
@@ -87,6 +101,43 @@ public:
 	int toLong(Tcl_Obj*, long*);
 	static int toDouble(Tcl_Interp*, Tcl_Obj*, double*);
 
-
 	~TclWrapper();
+
+	template<typename Cls, typename ReturnType, typename ...ParamTypes> int TclWrapper::bind(Cls* self, FString name) {
+		if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
+				const int numberOfParams = sizeof...(ParamTypes);
+				numberOfArgs--;  // proc is counted too
+
+				if (numberOfArgs != numberOfParams) {
+					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments -> %d isn't equal to the number of parameters %d"), numberOfArgs, numberOfParams)
+					return TCL_ERROR;
+				}
+
+				Tcl_Obj* objects[numberOfParams];
+				for(int i=0; i<numberOfParams; i++) { objects[i] = const_cast<Tcl_Obj*>(arguments[i]); }
+				tuple<Cls*, FString, ParamTypes...> values;
+
+				auto data = (WrapperContainer<Cls>*)clientData;
+				get<0>(values) = data->self;
+				get<1>(values) = data->name;
+				auto delegateWrapper = [](Cls* self, FString name, ParamTypes... args) -> bool {
+					TBaseDelegate<ReturnType, ParamTypes...> del;
+					del.BindUFunction(self, TCHAR_TO_ANSI(*name));
+					//return del.ExecuteIfBound(args...);
+					return del.ExecuteIfBound("hello!");
+				};
+				typedef bool(*DelegateWrapperFptr)(Cls* self, FString name, ParamTypes...);
+				apply((DelegateWrapperFptr)delegateWrapper, values);
+				delete data;
+				data = nullptr;
+				return TCL_OK;
+			};
+			const char* fname = TCHAR_TO_ANSI(*name);
+			auto data = new WrapperContainer<Cls>({ self, name });
+			_Tcl_CreateObjCommand(interpreter, fname, wrapper, (ClientData)data, (Tcl_CmdDeleteProc*)nullptr);
+			data = nullptr;
+			return TCL_OK;
+		}
+	}
 };

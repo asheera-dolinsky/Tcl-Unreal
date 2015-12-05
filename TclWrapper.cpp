@@ -64,38 +64,6 @@ int TclWrapper::registerFunction(const char* fname, Tcl_ObjCmdProc* f, ClientDat
 	}
 }
 
-template<typename cls, typename returnType, typename ...paramTypes> int TclWrapper::bind(FString name, cls* self) {
-	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-		auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const args[]) -> int {
-			if ((numberOfArgs < 3) || (numberOfArgs > 3)) {
-				UE_LOG(LogClass, Log, TEXT("Tcl: wrong # of args for the proc -> moveToLoc x y"))
-				return TCL_ERROR;
-			}
-			auto arg1 = const_cast<Tcl_Obj*>(args[1]);
-			double _arg1;
-			if (TclWrapper::toDouble(interpreter, arg1, &_arg1) == TCL_ERROR) return TCL_ERROR;
-			auto arg2 = const_cast<Tcl_Obj*>(args[2]);
-			double _arg2;
-			if (TclWrapper::toDouble(interpreter, arg2, &_arg2) == TCL_ERROR) return TCL_ERROR;
-
-			auto self = (cls*)clientData;
-
-			TBaseDelegate<returnType> WriteToLogDelegate;
-			WriteToLogDelegate.BindUFunction(self, "hello");
-			WriteToLogDelegate.ExecuteIfBound();
-
-			TBaseDelegate<returnType, paramTypes...> WriteToLogDelegate2;
-			WriteToLogDelegate2.BindUFunction(self, "hello2");
-			WriteToLogDelegate2.ExecuteIfBound("hello!");
-
-			return TCL_OK;
-		};
-		const char* fname = TCHAR_TO_ANSI(*name);
-		_Tcl_CreateObjCommand(interpreter, fname, wrapper, (ClientData)self, (Tcl_CmdDeleteProc*)nullptr);
-		return TCL_OK;
-	}
-}
-
 _Tcl_ObjSetVar2Proto TclWrapper::_Tcl_ObjSetVar2;
 int TclWrapper::define(Tcl_Obj* location, Tcl_Obj* scope, Tcl_Obj* val, int flags) {
 	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
