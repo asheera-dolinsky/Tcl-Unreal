@@ -19,6 +19,7 @@ Making it into a plugin is planned later once it matures.
 ### Usage
 * use Tcl_Interp\* TclWrapper::bootstrap() to bootstrap everything once and only once and get a new interpreter wrapper instance as *TSharedRef*
 * use int eval(const char\*) to run a Tcl script, it returns TCL_OK or a specific error code
+
 #### Binding methods
 * designate a method with UFUNCTION() macro in the header, due to the fact that the Unreal reflection system is used
 * call this somewhere in the class, usually the constructor: interpreter->bind<ActorCls, ReturnType, ParamTypes...>(this, fname as FString);
