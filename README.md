@@ -22,7 +22,7 @@ Making it into a plugin is planned later once it matures.
 
 #### Binding methods
 * designate a method with UFUNCTION() macro in the header, due to the fact that the Unreal reflection system is used
-* call this somewhere in the class, usually the constructor: interpreter->bind<ActorCls, ReturnType, ParamTypes...>(this, fname as FString);
+* call this somewhere in the class, usually the constructor: interpreter->bind&lt;ActorCls, ReturnType, ParamTypes...&gt;(this, fname as FString);
 * interpreter is of course the instance of the wrapper acquired through the TclWrapper::bootstrap();
 * that's it!!!
 
