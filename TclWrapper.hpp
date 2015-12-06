@@ -32,15 +32,17 @@
 
 template <int> struct POPULATE;
 
-template <bool n>
-struct IF {
-	template<int n, typename TupleSpecialization, typename ...ParamTypes> static inline void EXEC(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
-		POPULATE<n>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
+template <int numberOfParams>
+struct COMPILE_ON_PARAMS {
+	template<typename TupleSpecialization, typename ...ParamTypes> static inline void EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
+		Tcl_Obj* objects[numberOfParams];
+		for (int i=0; i<numberOfParams; i++) { objects[i] = const_cast<Tcl_Obj*>(arguments[i+1]); }
+		POPULATE<numberOfParams+1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
 };
 template <>
-struct IF<false> {
-	template<int n, typename TupleSpecialization, typename ...ParamTypes> static inline void EXEC(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {}
+struct COMPILE_ON_PARAMS<0> {
+	template<typename TupleSpecialization, typename ...ParamTypes> static inline void EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {}
 };
 
 template <typename T>
@@ -61,6 +63,12 @@ protected:
 	Tcl_Interp* interpreter;
 
 	int registerId(uint32);
+
+	template <typename Cls> static void freeWrapperContainer(ClientData clientData) {
+		auto data = (WrapperContainer<Cls>*)clientData;
+		delete data;
+		data = nullptr; 
+	}
 
 	static _Tcl_CreateInterpProto _Tcl_CreateInterp;
 	static _Tcl_EvalProto _Tcl_Eval;
@@ -106,15 +114,31 @@ public:
 	}
 	template <> static int TclWrapper::convert<int>(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
 		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
-		else { return _Tcl_GetIntFromObj(interpreter, obj, val); }
+		else { 
+			UE_LOG(LogClass, Log, TEXT("INT"))
+			return _Tcl_GetIntFromObj(interpreter, obj, val); }
 	}
 	template <> static int TclWrapper::convert<long>(Tcl_Interp* interpreter, Tcl_Obj* obj, long* val) {
 		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
-		else { return _Tcl_GetLongFromObj(interpreter, obj, val); }
+		else { 
+			UE_LOG(LogClass, Log, TEXT("LONG"))
+			return _Tcl_GetLongFromObj(interpreter, obj, val); }
+	}
+	//int64
+	template <> static int TclWrapper::convert<int64>(Tcl_Interp* interpreter, Tcl_Obj* obj, int64* val) {
+		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
+		else { 
+			UE_LOG(LogClass, Log, TEXT("INT64"))
+			long in = 0;
+			auto result = _Tcl_GetLongFromObj(interpreter, obj, &in);
+			*val = static_cast<int64>(in);
+			return result;
+		}
 	}
 	template <> static int TclWrapper::convert<float>(Tcl_Interp* interpreter, Tcl_Obj* obj, float* val) {
 		if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		else {
+			UE_LOG(LogClass, Log, TEXT("FLOAT"))
 			double in = 0.0;
 			auto result = _Tcl_GetDoubleFromObj(interpreter, obj, &in);
 			*val = static_cast<float>(in);
@@ -123,7 +147,9 @@ public:
 	}
 	template <> static int TclWrapper::convert<double>(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
 		if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-		else { return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
+		else { 
+			UE_LOG(LogClass, Log, TEXT("DOUBLE"))
+			return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
 	}
 
 	~TclWrapper();
@@ -132,9 +158,10 @@ public:
 		if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
 				const int numberOfParams = sizeof...(ParamTypes);
+
 				numberOfArgs--;  // proc is counted too
 
-				if (numberOfArgs != numberOfParams) {
+				if (numberOfArgs!=numberOfParams) {
 					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments -> %d isn't equal to the number of parameters %d"), numberOfArgs, numberOfParams)
 					return TCL_ERROR;
 				}
@@ -144,11 +171,7 @@ public:
 				get<0>(values) = data->self;
 				get<1>(values) = data->name;
 
-				Tcl_Obj* objects[numberOfParams];
-				for(int i=0; i<numberOfParams; i++) { objects[i] = const_cast<Tcl_Obj*>(arguments[i+1]); }
-
-				const auto conditionalCompilation = numberOfParams>0;
-				IF<conditionalCompilation>::EXEC<numberOfParams+1, tuple<Cls*, FString, ParamTypes...>, ParamTypes...>(interpreter, values, objects);
+				COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<Cls*, FString, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
 
 				auto delegateWrapper = [](Cls* self, FString name, ParamTypes... args) -> bool {
 					TBaseDelegate<ReturnType, ParamTypes...> del;
@@ -157,14 +180,11 @@ public:
 				};
 				typedef bool(*DelegateWrapperFptr)(Cls* self, FString name, ParamTypes...);
 				apply((DelegateWrapperFptr)delegateWrapper, values);
-				// delete in callback
-				//delete data;
-				//data = nullptr; 
 				return TCL_OK;
 			};
 			const char* fname = TCHAR_TO_ANSI(*name);
 			auto data = new WrapperContainer<Cls>({ self, name });
-			_Tcl_CreateObjCommand(interpreter, fname, wrapper, (ClientData)data, (Tcl_CmdDeleteProc*)nullptr);
+			_Tcl_CreateObjCommand(interpreter, fname, wrapper, (ClientData)data, &TclWrapper::freeWrapperContainer<Cls>);
 			data = nullptr;
 			return TCL_OK;
 		}
@@ -173,6 +193,9 @@ public:
 
 template <int idx> struct POPULATE {
 	template <typename TupleSpecialization, typename ...ParamTypes> static inline void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
+		double d = 0.0;
+		TclWrapper::toDouble(interpreter, objects[idx-2], &d);
+		UE_LOG(LogClass, Log, TEXT("IDX: %d ? %d double: %f"), idx, objects[idx-2] == nullptr, d)
 		TclWrapper::convert(interpreter, objects[idx-2], &(get<idx>(values)));
 		POPULATE<idx-1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
