@@ -30,13 +30,7 @@
 #include "api.hpp"
 #include "tupleUtils.hpp"
 
-template <typename TupleSpecialization, int len, Tcl_Obj* objects[len], typename Last> static void fromTuple(TupleSpecialization& tup) {
-}
-
-template <typename TupleSpecialization, int len, Tcl_Obj* objects[len], typename First, typename Second, typename ...Rest> static void fromTuple(TupleSpecialization& tup) {
-	//arr[sizeof...(Rest)] = sizeof...(Rest);
-	std::get<0>(tup);
-}
+template <int> struct POPULATE;
 
 template <typename T>
 struct WrapperContainer {
@@ -118,6 +112,10 @@ public:
 				for(int i=0; i<numberOfParams; i++) { objects[i] = const_cast<Tcl_Obj*>(arguments[i]); }
 				tuple<Cls*, FString, ParamTypes...> values;
 
+				if (numberOfParams > 0) {
+					POPULATE<numberOfParams>::FROM(interpreter, values, objects);
+				}
+
 				auto data = (WrapperContainer<Cls>*)clientData;
 				get<0>(values) = data->self;
 				get<1>(values) = data->name;
@@ -129,8 +127,9 @@ public:
 				};
 				typedef bool(*DelegateWrapperFptr)(Cls* self, FString name, ParamTypes...);
 				apply((DelegateWrapperFptr)delegateWrapper, values);
-				delete data;
-				data = nullptr;
+				// delete in callback
+				//delete data;
+				//data = nullptr; 
 				return TCL_OK;
 			};
 			const char* fname = TCHAR_TO_ANSI(*name);
@@ -140,4 +139,19 @@ public:
 			return TCL_OK;
 		}
 	}
+};
+
+#define CUTOFF 2
+template <int idx>
+struct POPULATE {
+	template <typename TupleSpecialization, typename ...ParamTypes> static void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
+		const auto ElementType = tuple_element<idx, decltype(values)>::type;
+		ElementType element = get<idx>(values);
+		TclWrapper::convert<ElementType>(interpreter, objects[idx-CUTOFF], &element);
+		POPULATE<n - 1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
+	}
+};
+// base case
+template <> struct POPULATE<CUTOFF - 1> {
+	template <typename TupleSpecialization, typename ...ParamTypes> static void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {}
 };
