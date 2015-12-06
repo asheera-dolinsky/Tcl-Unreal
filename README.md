@@ -19,6 +19,13 @@ Making it into a plugin is planned later once it matures.
 ### Usage
 * use Tcl_Interp\* TclWrapper::bootstrap() to bootstrap everything once and only once and get a new interpreter wrapper instance as *TSharedRef*
 * use int eval(const char\*) to run a Tcl script, it returns TCL_OK or a specific error code
+#### Binding methods
+* designate a method with UFUNCTION() macro in the header, due to the fact that the Unreal reflection system is used
+* call this somewhere in the class, usually the constructor: interpreter->bind<ActorCls, ReturnType, ParamTypes...>(this, fname as FString);
+* interpreter is of course the instance of the wrapper acquired through the TclWrapper::bootstrap();
+* that's it!!!
+
+##### The old, but perhaps still useful way to register functions
 * use void registerFunction(const char\*, **callback**, ClientData, Tcl_CmdDeleteProc\*)
 * **callback** is basically a wrapper for whatever function you want and has the following signature: int (ClientData, Tcl_Interp\*, int, Tcl_Obj\* const\*)
 * the last two parameters of that signature are nullable, but need to be cast into their respective types like this: (ClientData) NULL, (Tcl_CmdDeleteProc\*) NULL

@@ -114,21 +114,15 @@ public:
 	}
 	template <> static int TclWrapper::convert<int>(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
 		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
-		else { 
-			UE_LOG(LogClass, Log, TEXT("INT"))
-			return _Tcl_GetIntFromObj(interpreter, obj, val); }
+		else { return _Tcl_GetIntFromObj(interpreter, obj, val); }
 	}
 	template <> static int TclWrapper::convert<long>(Tcl_Interp* interpreter, Tcl_Obj* obj, long* val) {
 		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
-		else { 
-			UE_LOG(LogClass, Log, TEXT("LONG"))
-			return _Tcl_GetLongFromObj(interpreter, obj, val); }
+		else { return _Tcl_GetLongFromObj(interpreter, obj, val); }
 	}
-	//int64
 	template <> static int TclWrapper::convert<int64>(Tcl_Interp* interpreter, Tcl_Obj* obj, int64* val) {
 		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
-		else { 
-			UE_LOG(LogClass, Log, TEXT("INT64"))
+		else {
 			long in = 0;
 			auto result = _Tcl_GetLongFromObj(interpreter, obj, &in);
 			*val = static_cast<int64>(in);
@@ -138,7 +132,6 @@ public:
 	template <> static int TclWrapper::convert<float>(Tcl_Interp* interpreter, Tcl_Obj* obj, float* val) {
 		if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		else {
-			UE_LOG(LogClass, Log, TEXT("FLOAT"))
 			double in = 0.0;
 			auto result = _Tcl_GetDoubleFromObj(interpreter, obj, &in);
 			*val = static_cast<float>(in);
@@ -147,9 +140,7 @@ public:
 	}
 	template <> static int TclWrapper::convert<double>(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
 		if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-		else { 
-			UE_LOG(LogClass, Log, TEXT("DOUBLE"))
-			return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
+		else { return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
 	}
 
 	~TclWrapper();
@@ -193,9 +184,6 @@ public:
 
 template <int idx> struct POPULATE {
 	template <typename TupleSpecialization, typename ...ParamTypes> static inline void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
-		double d = 0.0;
-		TclWrapper::toDouble(interpreter, objects[idx-2], &d);
-		UE_LOG(LogClass, Log, TEXT("IDX: %d ? %d double: %f"), idx, objects[idx-2] == nullptr, d)
 		TclWrapper::convert(interpreter, objects[idx-2], &(get<idx>(values)));
 		POPULATE<idx-1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
