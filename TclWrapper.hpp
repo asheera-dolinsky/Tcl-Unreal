@@ -32,6 +32,17 @@
 
 template <int> struct POPULATE;
 
+template <bool n>
+struct IF {
+	template<int n, typename TupleSpecialization, typename ...ParamTypes> static inline void EXEC(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
+		POPULATE<n>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
+	}
+};
+template <>
+struct IF<false> {
+	template<int n, typename TupleSpecialization, typename ...ParamTypes> static inline void EXEC(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {}
+};
+
 template <typename T>
 struct WrapperContainer {
 	T* self;
@@ -50,11 +61,6 @@ protected:
 	Tcl_Interp* interpreter;
 
 	int registerId(uint32);
-
-	template <typename T> static int convert(Tcl_Interp*, Tcl_Obj*, T*);
-	template <> static int convert<int>(Tcl_Interp*, Tcl_Obj*, int*);
-	template <> static int convert<long>(Tcl_Interp*, Tcl_Obj*, long*);
-	template <> static int convert<double>(Tcl_Interp*, Tcl_Obj*, double*);
 
 	static _Tcl_CreateInterpProto _Tcl_CreateInterp;
 	static _Tcl_EvalProto _Tcl_Eval;
@@ -95,6 +101,31 @@ public:
 	int toLong(Tcl_Obj*, long*);
 	static int toDouble(Tcl_Interp*, Tcl_Obj*, double*);
 
+	template <typename T> static int TclWrapper::convert(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
+		return 0;
+	}
+	template <> static int TclWrapper::convert<int>(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
+		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
+		else { return _Tcl_GetIntFromObj(interpreter, obj, val); }
+	}
+	template <> static int TclWrapper::convert<long>(Tcl_Interp* interpreter, Tcl_Obj* obj, long* val) {
+		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
+		else { return _Tcl_GetLongFromObj(interpreter, obj, val); }
+	}
+	template <> static int TclWrapper::convert<float>(Tcl_Interp* interpreter, Tcl_Obj* obj, float* val) {
+		if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		else {
+			double in = 0.0;
+			auto result = _Tcl_GetDoubleFromObj(interpreter, obj, &in);
+			*val = static_cast<float>(in);
+			return result;
+		}
+	}
+	template <> static int TclWrapper::convert<double>(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
+		if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		else { return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
+	}
+
 	~TclWrapper();
 
 	template<typename Cls, typename ReturnType, typename ...ParamTypes> int TclWrapper::bind(Cls* self, FString name) {
@@ -108,22 +139,21 @@ public:
 					return TCL_ERROR;
 				}
 
-				Tcl_Obj* objects[numberOfParams];
-				for(int i=0; i<numberOfParams; i++) { objects[i] = const_cast<Tcl_Obj*>(arguments[i]); }
-				tuple<Cls*, FString, ParamTypes...> values;
-
-				if (numberOfParams > 0) {
-					POPULATE<numberOfParams>::FROM(interpreter, values, objects);
-				}
-
 				auto data = (WrapperContainer<Cls>*)clientData;
+				tuple<Cls*, FString, ParamTypes...> values;
 				get<0>(values) = data->self;
 				get<1>(values) = data->name;
+
+				Tcl_Obj* objects[numberOfParams];
+				for(int i=0; i<numberOfParams; i++) { objects[i] = const_cast<Tcl_Obj*>(arguments[i+1]); }
+
+				const auto conditionalCompilation = numberOfParams>0;
+				IF<conditionalCompilation>::EXEC<numberOfParams+1, tuple<Cls*, FString, ParamTypes...>, ParamTypes...>(interpreter, values, objects);
+
 				auto delegateWrapper = [](Cls* self, FString name, ParamTypes... args) -> bool {
 					TBaseDelegate<ReturnType, ParamTypes...> del;
 					del.BindUFunction(self, TCHAR_TO_ANSI(*name));
-					//return del.ExecuteIfBound(args...);
-					return del.ExecuteIfBound("hello!");
+					return del.ExecuteIfBound(args...);
 				};
 				typedef bool(*DelegateWrapperFptr)(Cls* self, FString name, ParamTypes...);
 				apply((DelegateWrapperFptr)delegateWrapper, values);
@@ -141,17 +171,12 @@ public:
 	}
 };
 
-#define CUTOFF 2
-template <int idx>
-struct POPULATE {
-	template <typename TupleSpecialization, typename ...ParamTypes> static void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
-		const auto ElementType = tuple_element<idx, decltype(values)>::type;
-		ElementType element = get<idx>(values);
-		TclWrapper::convert<ElementType>(interpreter, objects[idx-CUTOFF], &element);
-		POPULATE<n - 1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
+template <int idx> struct POPULATE {
+	template <typename TupleSpecialization, typename ...ParamTypes> static inline void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
+		TclWrapper::convert(interpreter, objects[idx-2], &(get<idx>(values)));
+		POPULATE<idx-1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
 };
-// base case
-template <> struct POPULATE<CUTOFF - 1> {
-	template <typename TupleSpecialization, typename ...ParamTypes> static void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {}
+template <> struct POPULATE<1> {
+	template <typename TupleSpecialization, typename ...ParamTypes> static inline void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {}
 };

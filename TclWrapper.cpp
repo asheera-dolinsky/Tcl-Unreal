@@ -184,22 +184,6 @@ int TclWrapper::toDouble(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
 	else { return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
 }
 
-template <typename T> int TclWrapper::convert(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
-	return 0;
-}
-template <> int TclWrapper::convert<int>(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
-	if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
-	else { return _Tcl_GetIntFromObj(interpreter, obj, val); }
-}
-template <> int TclWrapper::convert<long>(Tcl_Interp* interpreter, Tcl_Obj* obj, long* val) {
-	if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
-	else { return _Tcl_GetLongFromObj(interpreter, obj, val); }
-}
-template <> int TclWrapper::convert<double>(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
-	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-	else { return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
-}
-
 TSharedRef<TclWrapper> TclWrapper::bootstrap(uint32 _id) {
 	if (handle != nullptr) { return TSharedRef<TclWrapper>(new TclWrapper(true, _id)); }
 	auto dllPath = FPaths::Combine(*FPaths::GameDir(), TEXT("ThirdParty/"), TEXT(_TCL_DLL_FNAME_));
