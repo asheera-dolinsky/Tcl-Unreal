@@ -1,5 +1,5 @@
-# UETclWrapper
-This is a simple [Tcl](http://wiki.tcl.tk/299) wrapper for the [Unreal Engine](https://www.unrealengine.com/what-is-unreal-engine-4).
+# Tcl/Unreal
+This is a [Tcl](http://wiki.tcl.tk/299) wrapper for the [Unreal Engine](https://www.unrealengine.com/what-is-unreal-engine-4).
 It's the first good effort to implement [Tcl](http://wiki.tcl.tk/299) into the [Unreal Engine](https://www.unrealengine.com/what-is-unreal-engine-4).
 Making it into a plugin is planned later once it matures.
 
