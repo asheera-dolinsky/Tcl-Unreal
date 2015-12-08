@@ -84,7 +84,15 @@ protected:
 	static _Tcl_GetIntFromObjProto _Tcl_GetIntFromObj;
 	static _Tcl_GetLongFromObjProto _Tcl_GetLongFromObj;
 	static _Tcl_GetDoubleFromObjProto _Tcl_GetDoubleFromObj;
+	
+	static _Tcl_UniCharToUtfProto _Tcl_UniCharToUtf;
 	static _Tcl_GetUnicodeFromObjProto _Tcl_GetUnicodeFromObj;
+	static _Tcl_UniCharLenProto _Tcl_UniCharLen;
+	static _Tcl_DStringInitProto _Tcl_DStringInit;
+	static _Tcl_DStringFreeProto _Tcl_DStringFree;
+	static _Tcl_UniCharToUtfDStringProto _Tcl_UniCharToUtfDString;
+
+	static _Tcl_GetStringFromObjProto _Tcl_GetStringFromObj;
 public:
 	static TSharedRef<TclWrapper> bootstrap(uint32);
 	bool bootstrapSuccess();
@@ -142,6 +150,21 @@ public:
 	template <> static int TclWrapper::convert<double>(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
 		if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		else { return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
+	}
+	template <> static int TclWrapper::convert<FString>(Tcl_Interp* interpreter, Tcl_Obj* obj, FString* val) {
+		if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		else {
+			auto unistr = _Tcl_GetUnicodeFromObj(obj, nullptr);
+			Tcl_DString dstr;
+			_Tcl_DStringInit(&dstr);
+			auto utf8str = _Tcl_UniCharToUtfDString(unistr, _Tcl_UniCharLen(unistr), &dstr);
+			*val = utf8str;
+			//*val = UTF8_TO_TCHAR(utf8str);
+			_Tcl_DStringFree(&dstr);
+			//auto result = _Tcl_GetStringFromObj(obj, nullptr);
+			//*val = result;
+			return TCL_OK;
+		}
 	}
 
 	~TclWrapper();

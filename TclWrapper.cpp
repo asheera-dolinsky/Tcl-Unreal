@@ -184,7 +184,14 @@ int TclWrapper::toDouble(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
 	else { return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
 }
 
+_Tcl_UniCharToUtfProto TclWrapper::_Tcl_UniCharToUtf;
 _Tcl_GetUnicodeFromObjProto TclWrapper::_Tcl_GetUnicodeFromObj;
+_Tcl_UniCharLenProto TclWrapper::_Tcl_UniCharLen;
+_Tcl_DStringInitProto TclWrapper::_Tcl_DStringInit;
+_Tcl_DStringFreeProto TclWrapper::_Tcl_DStringFree;
+_Tcl_UniCharToUtfDStringProto TclWrapper::_Tcl_UniCharToUtfDString;
+
+_Tcl_GetStringFromObjProto TclWrapper::_Tcl_GetStringFromObj;
 
 TSharedRef<TclWrapper> TclWrapper::bootstrap(uint32 _id) {
 	if (handle != nullptr) { return TSharedRef<TclWrapper>(new TclWrapper(true, _id)); }
@@ -220,8 +227,23 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap(uint32 _id) {
 			_Tcl_GetLongFromObj = (_Tcl_GetLongFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_GetDoubleFromObj";
 			_Tcl_GetDoubleFromObj = (_Tcl_GetDoubleFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_UniCharToUtf";
+			_Tcl_UniCharToUtf = (_Tcl_UniCharToUtfProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_GetUnicodeFromObj";
 			_Tcl_GetUnicodeFromObj = (_Tcl_GetUnicodeFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_UniCharLen";
+			_Tcl_UniCharLen = (_Tcl_UniCharLenProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_DStringInit";
+			_Tcl_DStringInit = (_Tcl_DStringInitProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_DStringFree";
+			_Tcl_DStringFree = (_Tcl_DStringFreeProto)FPlatformProcess::GetDllExport(handle, *procName);
+			
+			procName = "Tcl_UniCharToUtfDString";
+			_Tcl_UniCharToUtfDString = (_Tcl_UniCharToUtfDStringProto)FPlatformProcess::GetDllExport(handle, *procName);
+
+			procName = "Tcl_GetStringFromObj";
+			_Tcl_GetStringFromObj = (_Tcl_GetStringFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+
 			if (_Tcl_CreateInterp == nullptr ||
 				_Tcl_Eval == nullptr ||
 				_Tcl_CreateObjCommand == nullptr ||
@@ -235,7 +257,13 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap(uint32 _id) {
 				_Tcl_GetIntFromObj == nullptr ||
 				_Tcl_GetLongFromObj == nullptr ||
 				_Tcl_GetDoubleFromObj == nullptr ||
-				_Tcl_GetUnicodeFromObj == nullptr) {
+				_Tcl_UniCharToUtf == nullptr ||
+				_Tcl_GetUnicodeFromObj == nullptr ||
+				_Tcl_UniCharLen == nullptr ||
+				_Tcl_DStringInit == nullptr ||
+				_Tcl_DStringFree == nullptr ||
+				_Tcl_UniCharToUtfDString == nullptr ||
+				_Tcl_GetStringFromObj == nullptr) {
 				handle = nullptr;
 				UE_LOG(LogClass, Log, TEXT("Bootstrapping one or more functions for Tcl failed!"))
 			}

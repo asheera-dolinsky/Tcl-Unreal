@@ -37,4 +37,13 @@ typedef int(*_Tcl_GetIntFromObjProto)(Tcl_Interp*, Tcl_Obj*, int*);
 typedef int(*_Tcl_GetLongFromObjProto)(Tcl_Interp*, Tcl_Obj*, long*);
 typedef int(*_Tcl_GetDoubleFromObjProto)(Tcl_Interp*, Tcl_Obj*, double*);
 
+typedef Tcl_UniChar*(*_Tcl_GetUnicodeFromObjProto)(Tcl_Obj*, int*);
+typedef int(*_Tcl_UniCharLenProto)(Tcl_UniChar*);
+typedef int(*_Tcl_UniCharToUtfProto)(int, char*);
+typedef void(*_Tcl_DStringInitProto)(Tcl_DString*);
+typedef void(*_Tcl_DStringFreeProto)(Tcl_DString*);
+typedef char*(*_Tcl_UniCharToUtfDStringProto)(const Tcl_UniChar*, int, Tcl_DString*);
+
+typedef char*(*_Tcl_GetStringFromObjProto)(Tcl_Obj*, int*);
+
 #define _TCL_BOOTSTRAP_FAIL_ -1
