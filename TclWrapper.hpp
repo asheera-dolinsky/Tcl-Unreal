@@ -24,7 +24,7 @@
 
 #pragma once
 
-#define _PROJECT_API_ID_ EMBEDTCL_API
+#define _PROJECT_API_ID_ AIDEMO_API
 #define _TCL_DLL_FNAME_ "tcl86t.dll"
 
 #include "api.hpp"
@@ -34,7 +34,7 @@ template <int> struct POPULATE;
 
 template <int numberOfParams>
 struct COMPILE_ON_PARAMS {
-	template<typename TupleSpecialization, typename ...ParamTypes> static inline void EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
+	template<typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static void EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
 		Tcl_Obj* objects[numberOfParams];
 		for (int i=0; i<numberOfParams; i++) { objects[i] = const_cast<Tcl_Obj*>(arguments[i+1]); }
 		POPULATE<numberOfParams+1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
@@ -42,7 +42,7 @@ struct COMPILE_ON_PARAMS {
 };
 template <>
 struct COMPILE_ON_PARAMS<0> {
-	template<typename TupleSpecialization, typename ...ParamTypes> static inline void EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {}
+	template<typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static void EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {}
 };
 
 template <typename T>
@@ -84,6 +84,7 @@ protected:
 	static _Tcl_GetIntFromObjProto _Tcl_GetIntFromObj;
 	static _Tcl_GetLongFromObjProto _Tcl_GetLongFromObj;
 	static _Tcl_GetDoubleFromObjProto _Tcl_GetDoubleFromObj;
+	static _Tcl_GetUnicodeFromObjProto _Tcl_GetUnicodeFromObj;
 public:
 	static TSharedRef<TclWrapper> bootstrap(uint32);
 	bool bootstrapSuccess();
@@ -150,14 +151,14 @@ public:
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
 				const int numberOfParams = sizeof...(ParamTypes);
 
-				numberOfArgs--;  // proc is counted too
+				numberOfArgs--;  // proc is  co unted too
 
+				auto data = (WrapperContainer<Cls>*)clientData;
 				if (numberOfArgs!=numberOfParams) {
-					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments -> %d isn't equal to the number of parameters %d"), numberOfArgs, numberOfParams)
+					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
 					return TCL_ERROR;
 				}
 
-				auto data = (WrapperContainer<Cls>*)clientData;
 				tuple<Cls*, FString, ParamTypes...> values;
 				get<0>(values) = data->self;
 				get<1>(values) = data->name;
@@ -183,11 +184,11 @@ public:
 };
 
 template <int idx> struct POPULATE {
-	template <typename TupleSpecialization, typename ...ParamTypes> static inline void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
+	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
 		TclWrapper::convert(interpreter, objects[idx-2], &(get<idx>(values)));
 		POPULATE<idx-1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
 };
 template <> struct POPULATE<1> {
-	template <typename TupleSpecialization, typename ...ParamTypes> static inline void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {}
+	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {}
 };

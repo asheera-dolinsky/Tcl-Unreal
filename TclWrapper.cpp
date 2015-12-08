@@ -22,7 +22,7 @@
 *	 SOFTWARE.
 */
 
-#include "EmbedTcl.h"
+#include "AIDemo.h"
 #include "TclWrapper.hpp"
 
 TclWrapper::TclWrapper(bool bootstrapSuccess = false, uint32 _id = 0) {
@@ -184,6 +184,8 @@ int TclWrapper::toDouble(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
 	else { return _Tcl_GetDoubleFromObj(interpreter, obj, val); }
 }
 
+_Tcl_GetUnicodeFromObjProto TclWrapper::_Tcl_GetUnicodeFromObj;
+
 TSharedRef<TclWrapper> TclWrapper::bootstrap(uint32 _id) {
 	if (handle != nullptr) { return TSharedRef<TclWrapper>(new TclWrapper(true, _id)); }
 	auto dllPath = FPaths::Combine(*FPaths::GameDir(), TEXT("ThirdParty/"), TEXT(_TCL_DLL_FNAME_));
@@ -218,6 +220,8 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap(uint32 _id) {
 			_Tcl_GetLongFromObj = (_Tcl_GetLongFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			procName = "Tcl_GetDoubleFromObj";
 			_Tcl_GetDoubleFromObj = (_Tcl_GetDoubleFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+			procName = "Tcl_GetUnicodeFromObj";
+			_Tcl_GetUnicodeFromObj = (_Tcl_GetUnicodeFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 			if (_Tcl_CreateInterp == nullptr ||
 				_Tcl_Eval == nullptr ||
 				_Tcl_CreateObjCommand == nullptr ||
@@ -230,7 +234,8 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap(uint32 _id) {
 				_Tcl_SetIntObj == nullptr ||
 				_Tcl_GetIntFromObj == nullptr ||
 				_Tcl_GetLongFromObj == nullptr ||
-				_Tcl_GetDoubleFromObj == nullptr) {
+				_Tcl_GetDoubleFromObj == nullptr ||
+				_Tcl_GetUnicodeFromObj == nullptr) {
 				handle = nullptr;
 				UE_LOG(LogClass, Log, TEXT("Bootstrapping one or more functions for Tcl failed!"))
 			}
