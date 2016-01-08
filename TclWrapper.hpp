@@ -24,7 +24,6 @@
 
 #pragma once
 
-#define _PROJECT_API_ID_ AIDEMO_API
 #define _TCL_DLL_FNAME_ "tcl86t.dll"
 
 #include "api.hpp"
@@ -51,8 +50,33 @@ struct WrapperContainer {
 	FString name;
 };
 
-class _PROJECT_API_ID_ TclWrapper
-{
+/*
+void _Tcl_FreeInternalRepProc(Tcl_Obj *obj) {
+
+}
+
+void _Tcl_DupInternalRepProc(Tcl_Obj *srcPtr, Tcl_Obj *dupPtr) {
+
+}
+
+void _Tcl_UpdateStringProc(Tcl_Obj *obj) {
+
+}
+
+int _Tcl_SetFromAnyProc(Tcl_Interp *interp, Tcl_Obj *obj) {
+	return 0;
+}
+
+void InitOpaque(Tcl_Obj* obj, UObject* ptr) {
+	static const Tcl_ObjType type = { "UObject", &_Tcl_FreeInternalRepProc, &_Tcl_DupInternalRepProc, &_Tcl_UpdateStringProc, &_Tcl_SetFromAnyProc };
+	obj->internalRep.otherValuePtr = (ClientData)ptr;
+	obj->typePtr = &type;
+	//auto name = ptr->GetClass()->GetFName().ToString();
+	//auto cname = TCHAR_TO_ANSI(*name);
+
+}
+*/
+class TclWrapper {
 protected:
 	TclWrapper(bool, uint32);
 
@@ -73,6 +97,8 @@ protected:
 	static _Tcl_CreateInterpProto _Tcl_CreateInterp;
 	static _Tcl_EvalProto _Tcl_Eval;
 	static _Tcl_CreateObjCommandProto _Tcl_CreateObjCommand;
+	static _Tcl_NewObjProto _Tcl_NewObj;
+	static _Tcl_SetVar2ExProto _Tcl_SetVar2Ex;
 	
 	static _Tcl_ObjSetVar2Proto _Tcl_ObjSetVar2;
 	static _Tcl_ObjGetVar2Proto _Tcl_ObjGetVar2;
@@ -84,6 +110,7 @@ protected:
 	static _Tcl_GetIntFromObjProto _Tcl_GetIntFromObj;
 	static _Tcl_GetLongFromObjProto _Tcl_GetLongFromObj;
 	static _Tcl_GetDoubleFromObjProto _Tcl_GetDoubleFromObj;
+	static _Tcl_GetCommandFromObjProto _Tcl_GetCommandFromObj;
 	
 	static _Tcl_UniCharToUtfProto _Tcl_UniCharToUtf;
 	static _Tcl_GetUnicodeFromObjProto _Tcl_GetUnicodeFromObj;
@@ -98,6 +125,14 @@ public:
 	bool bootstrapSuccess();
 	int eval(const char*);
 	int registerFunction(const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
+
+	static void Tcl_FreeInternalRepProc(Tcl_Obj*);
+	static void Tcl_DupInternalRepProc(Tcl_Obj*, Tcl_Obj*);
+	static void Tcl_UpdateStringProc(Tcl_Obj *obj);
+	static int Tcl_SetFromAnyProc(Tcl_Interp*, Tcl_Obj*);
+
+	int define(char* location, UObject* ptr, char* scope = nullptr, int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG);
+	int define(char* location, Tcl_Obj* val, char* scope = nullptr, int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG);
 	int define(Tcl_Obj*, Tcl_Obj*, Tcl_Obj*, int);
 	int fetch(Tcl_Obj*, Tcl_Obj*, Tcl_Obj**, int);
 
@@ -119,7 +154,10 @@ public:
 	static int toDouble(Tcl_Interp*, Tcl_Obj*, double*);
 
 	template <typename T> static int TclWrapper::convert(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
-		return 0;
+		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
+		*val = (T)(obj->internalRep.otherValuePtr);
+		UE_LOG(LogClass, Log, TEXT("CONVERTED!"))
+		return TCL_OK;
 	}
 	template <> static int TclWrapper::convert<int>(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
 		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
@@ -174,7 +212,7 @@ public:
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
 				const int numberOfParams = sizeof...(ParamTypes);
 
-				numberOfArgs--;  // proc is  co unted too
+				numberOfArgs--;  // proc is counted too
 
 				auto data = (WrapperContainer<Cls>*)clientData;
 				if (numberOfArgs!=numberOfParams) {

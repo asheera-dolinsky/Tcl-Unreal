@@ -23,9 +23,14 @@
 */
 
 #include "tcl.h"
+
 typedef Tcl_Interp*(*_Tcl_CreateInterpProto)(void);
-typedef int(*_Tcl_EvalProto)(Tcl_Interp*, const char *);
+typedef int(*_Tcl_EvalProto)(Tcl_Interp*, const char*);
 typedef void(*_Tcl_CreateObjCommandProto)(Tcl_Interp*, const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
+
+typedef Tcl_Obj*(*_Tcl_NewObjProto)(void);
+typedef Tcl_Obj*(*_Tcl_SetVar2ExProto)(Tcl_Interp*, char*, char*, Tcl_Obj*, int);
+
 typedef void(*_Tcl_SetStringObjProto)(Tcl_Obj*, const char*, int);
 typedef void(*_Tcl_SetIntObjProto)(Tcl_Obj*, int);
 typedef Tcl_Obj*(*_Tcl_GetObjResultProto)(Tcl_Interp*);
@@ -36,6 +41,7 @@ typedef Tcl_Obj*(*_Tcl_ObjGetVar2Proto)(Tcl_Interp*, Tcl_Obj*, Tcl_Obj*, int);
 typedef int(*_Tcl_GetIntFromObjProto)(Tcl_Interp*, Tcl_Obj*, int*);
 typedef int(*_Tcl_GetLongFromObjProto)(Tcl_Interp*, Tcl_Obj*, long*);
 typedef int(*_Tcl_GetDoubleFromObjProto)(Tcl_Interp*, Tcl_Obj*, double*);
+typedef Tcl_Command(*_Tcl_GetCommandFromObjProto)(Tcl_Interp*, Tcl_Obj*);
 
 typedef Tcl_UniChar*(*_Tcl_GetUnicodeFromObjProto)(Tcl_Obj*, int*);
 typedef int(*_Tcl_UniCharLenProto)(Tcl_UniChar*);
