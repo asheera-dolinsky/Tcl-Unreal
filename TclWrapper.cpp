@@ -82,6 +82,25 @@ int TclWrapper::Tcl_SetFromAnyProc(Tcl_Interp* interp, Tcl_Obj* obj) {
 
 _Tcl_NewObjProto TclWrapper::_Tcl_NewObj = nullptr;
 _Tcl_SetVar2ExProto TclWrapper::_Tcl_SetVar2Ex = nullptr;
+int TclWrapper::define(char* location, ClientData ptr, char* scope, int flags) {
+	static const Tcl_ObjType type = { "ClientData", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
+	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+	else {
+		auto val = _Tcl_NewObj();
+		val->internalRep.otherValuePtr = ptr;
+		val->typePtr = &type;
+		*val = *(_Tcl_SetVar2Ex(interpreter, location, scope, val, flags));
+		FString loc = location;
+		if (scope == nullptr) {
+			UE_LOG(LogClass, Log, TEXT("Defined in %s for Tcl"), *loc)
+		}
+		else {
+			FString scp = scope;
+			UE_LOG(LogClass, Log, TEXT("Defined in %s(%s) for Tcl"), *loc, *scp)
+		}
+		return TCL_OK;
+	}
+}
 int TclWrapper::define(char* location, UObject* ptr, char* scope, int flags) {
 	static const Tcl_ObjType type = { "UObject", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
 	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
@@ -90,6 +109,33 @@ int TclWrapper::define(char* location, UObject* ptr, char* scope, int flags) {
 		val->internalRep.otherValuePtr = (ClientData)ptr;
 		val->typePtr = &type;
 		*val = *(_Tcl_SetVar2Ex(interpreter, location, scope, val, flags));
+		FString loc = location;
+		if (scope == nullptr) {
+			UE_LOG(LogClass, Log, TEXT("Defined in %s"), *loc)
+		}
+		else {
+			FString scp = scope;
+			UE_LOG(LogClass, Log, TEXT("Defined in %s(%s)"), *loc, *scp)
+		}
+		return TCL_OK;
+	}
+}
+int TclWrapper::define(char* location, FString* ptr, char* scope, int flags) {
+	static const Tcl_ObjType type = { "FString", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
+	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+	else {
+		auto val = _Tcl_NewObj();
+		val->internalRep.otherValuePtr = (ClientData)ptr;
+		val->typePtr = &type;
+		*val = *(_Tcl_SetVar2Ex(interpreter, location, scope, val, flags));
+		FString loc = location;
+		if (scope == nullptr) {
+			UE_LOG(LogClass, Log, TEXT("Defined in %s"), *loc)
+		}
+		else {
+			FString scp = scope;
+			UE_LOG(LogClass, Log, TEXT("Defined in %s(%s)"), *loc, *scp)
+		}
 		return TCL_OK;
 	}
 }
@@ -231,6 +277,22 @@ _Tcl_UniCharToUtfDStringProto TclWrapper::_Tcl_UniCharToUtfDString = nullptr;
 
 _Tcl_GetStringFromObjProto TclWrapper::_Tcl_GetStringFromObj = nullptr;
 
+bool TclWrapper::handleMissing() {
+	return handle == nullptr;
+}
+
+_Tcl_GetIntFromObjProto TclWrapper::get_Tcl_GetIntFromObj() {
+	return _Tcl_GetIntFromObj;
+}
+
+_Tcl_GetLongFromObjProto TclWrapper::get_Tcl_GetLongFromObj() {
+	return _Tcl_GetLongFromObj;
+}
+
+_Tcl_GetStringFromObjProto TclWrapper::get_Tcl_GetStringFromObj() {
+	return _Tcl_GetStringFromObj;
+}
+
 TSharedRef<TclWrapper> TclWrapper::bootstrap(uint32 _id) {
 	if (handle != nullptr) { return TSharedRef<TclWrapper>(new TclWrapper(true, _id)); }
 	auto dllPath = FPaths::Combine(*FPaths::GameDir(), TEXT("ThirdParty/"), TEXT(_TCL_DLL_FNAME_));
@@ -321,6 +383,6 @@ TSharedRef<TclWrapper> TclWrapper::bootstrap(uint32 _id) {
 			}
 		}
 	}
-	else { UE_LOG(LogClass, Log, TEXT("Cannot find %s!"), _TCL_DLL_FNAME_) }
+	else { UE_LOG(LogClass, Log, TEXT("Cannot find %s for Tcl!"), _TCL_DLL_FNAME_) }
 	return TSharedRef<TclWrapper>(new TclWrapper());
 }

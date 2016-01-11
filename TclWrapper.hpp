@@ -22,12 +22,23 @@
 *	 SOFTWARE.
 */
 
+/*
+	TODO:
+		0) write a blueprint interface library for Eval, Define, Define Struct (simply adapt from the current embedded state)
+		1) handle error codes in IMPL_CONVERT for more safety
+		2) devise a way to check for nullpointers before going into UFUNCTIONs
+		3) make the code as safe as humanly possible
+		4) illiminate memory leaks, there is probably a bunch, the first being the interpreter itself once the owner is destroyed
+*/
+
 #pragma once
 
 #define _TCL_DLL_FNAME_ "tcl86t.dll"
 
 #include "api.hpp"
 #include "tupleUtils.hpp"
+
+//typedef FString TclString;
 
 template <int> struct POPULATE;
 
@@ -50,6 +61,17 @@ struct WrapperContainer {
 	FString name;
 };
 
+/*
+template <>
+struct IMPL_CONVERT<T*> {
+	static int CALL(void* handle, Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
+		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
+		*val = (T*)(obj->internalRep.otherValuePtr);
+		UE_LOG(LogClass, Log, TEXT("CONVERTED!"))
+		return TCL_OK;
+	}
+};
+*/
 /*
 void _Tcl_FreeInternalRepProc(Tcl_Obj *obj) {
 
@@ -121,17 +143,24 @@ protected:
 
 	static _Tcl_GetStringFromObjProto _Tcl_GetStringFromObj;
 public:
+	static bool handleMissing();
 	static TSharedRef<TclWrapper> bootstrap(uint32);
 	bool bootstrapSuccess();
 	int eval(const char*);
 	int registerFunction(const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
+
+	static _Tcl_GetIntFromObjProto get_Tcl_GetIntFromObj();
+	static _Tcl_GetLongFromObjProto get_Tcl_GetLongFromObj();
+	static _Tcl_GetStringFromObjProto get_Tcl_GetStringFromObj();
 
 	static void Tcl_FreeInternalRepProc(Tcl_Obj*);
 	static void Tcl_DupInternalRepProc(Tcl_Obj*, Tcl_Obj*);
 	static void Tcl_UpdateStringProc(Tcl_Obj *obj);
 	static int Tcl_SetFromAnyProc(Tcl_Interp*, Tcl_Obj*);
 
+	int define(char* location, ClientData ptr, char* scope = nullptr, int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG);
 	int define(char* location, UObject* ptr, char* scope = nullptr, int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG);
+	int define(char* location, FString* ptr, char* scope = nullptr, int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG);
 	int define(char* location, Tcl_Obj* val, char* scope = nullptr, int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG);
 	int define(Tcl_Obj*, Tcl_Obj*, Tcl_Obj*, int);
 	int fetch(Tcl_Obj*, Tcl_Obj*, Tcl_Obj**, int);
@@ -155,10 +184,32 @@ public:
 
 	template <typename T> static int TclWrapper::convert(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
 		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
+		T deref = *((T*)(obj->internalRep.otherValuePtr));
+		*val = deref;
+		UE_LOG(LogClass, Log, TEXT("CONVERTED!"))
+		return TCL_OK;
+	}
+/*
+	template <> static int TclWrapper::convert<T*>(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
+		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
+		//*val = (T*)(obj->internalRep.otherValuePtr);
+		UE_LOG(LogClass, Log, TEXT("CONVERTED!"))
+		return TCL_OK;
+	}
+
+	template <typename T*> static int TclWrapper::convert(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
+		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
 		*val = (T)(obj->internalRep.otherValuePtr);
 		UE_LOG(LogClass, Log, TEXT("CONVERTED!"))
 		return TCL_OK;
 	}
+	template <class T> static int TclWrapper::convert(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
+		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
+		*val = (T*)(obj->internalRep.otherValuePtr);
+		UE_LOG(LogClass, Log, TEXT("CONVERTED!"))
+		return TCL_OK;
+	}
+*/
 	template <> static int TclWrapper::convert<int>(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
 		if (handle == nullptr || interpreter == nullptr ) { return _TCL_BOOTSTRAP_FAIL_; }
 		else { return _Tcl_GetIntFromObj(interpreter, obj, val); }
@@ -244,9 +295,80 @@ public:
 	}
 };
 
+template <typename T>  // USTRUCT
+struct IMPL_CONVERT {
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
+		if (TclWrapper::handleMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		T deref = *((T*)(obj->internalRep.otherValuePtr));
+		*val = deref;
+		UE_LOG(LogClass, Log, TEXT("Other!"))
+		return TCL_OK;
+	}
+};
+template <typename T>  // UCLASS
+struct IMPL_CONVERT<T*> {
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
+		if (TclWrapper::handleMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		*val = (T*)(obj->internalRep.otherValuePtr);
+		UE_LOG(LogClass, Log, TEXT("Pointer!"))
+		return TCL_OK;
+	}
+};
+template <>  // FString
+struct IMPL_CONVERT<FString> {
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, FString* val) {
+		if (TclWrapper::handleMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		UE_LOG(LogClass, Log, TEXT("FString!"))
+		if (obj->internalRep.otherValuePtr == nullptr) {
+			auto deref = *((FString*)(obj->internalRep.otherValuePtr));
+			*val = deref;
+		} else {
+			UE_LOG(LogClass, Log, TEXT("FString passed!"))
+			auto result = TclWrapper::get_Tcl_GetStringFromObj()(obj, nullptr);
+			*val = result;
+		}
+		return TCL_OK;
+	}
+};
+// reflection doesn't permit these types, will be removed on next commit.
+/*
+template <>
+struct IMPL_CONVERT<int> {
+	static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int* val) {
+		if (TclWrapper::handleMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		else { return TclWrapper::get_Tcl_GetIntFromObj()(interpreter, obj, val); }
+	}
+};
+template <>
+struct IMPL_CONVERT<long> {
+	static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, long* val) {
+		if (TclWrapper::handleMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		else { return TclWrapper::get_Tcl_GetLongFromObj()(interpreter, obj, val); }
+	}
+};
+*/
+template <>  // INT64
+struct IMPL_CONVERT<int64> {
+	static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int64* val) {
+		if (TclWrapper::handleMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		else {
+			long in = 0;
+			auto result = TclWrapper::get_Tcl_GetLongFromObj()(interpreter, obj, &in);
+			*val = static_cast<int64>(in);
+			return result;
+		}
+	}
+};
+
 template <int idx> struct POPULATE {
 	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
-		TclWrapper::convert(interpreter, objects[idx-2], &(get<idx>(values)));
+		//IMPL_CONVERT<>
+		//IMPL_CONVERT::CALL(TclWrapper::getHandle(), interpreter, objects[idx-2], &(get<idx>(values)));
+
+		//std::tuple_element<0,decltype(mytuple)>::type first = std::get<0>(mytuple);
+		//std::tuple_element<idx, TupleSpecialization>::type typ;
+		IMPL_CONVERT<std::tuple_element<idx, TupleSpecialization>::type>::CALL(interpreter, objects[idx-2], &(get<idx>(values)));
+		//TclWrapper::convert(interpreter, objects[idx-2], &(get<idx>(values)));
 		POPULATE<idx-1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
 };
