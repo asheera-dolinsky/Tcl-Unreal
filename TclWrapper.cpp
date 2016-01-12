@@ -22,7 +22,7 @@
 *	 SOFTWARE.
 */
 
-#include "AIDemo.h"
+#include "PhantomGunsDemo.h"
 #include "TclWrapper.hpp"
 
 TclWrapper::TclWrapper(bool bootstrapSuccess = false, uint32 _id = 0) {
@@ -281,12 +281,12 @@ bool TclWrapper::handleMissing() {
 	return handle == nullptr;
 }
 
-_Tcl_GetIntFromObjProto TclWrapper::get_Tcl_GetIntFromObj() {
-	return _Tcl_GetIntFromObj;
-}
-
 _Tcl_GetLongFromObjProto TclWrapper::get_Tcl_GetLongFromObj() {
 	return _Tcl_GetLongFromObj;
+}
+
+_Tcl_GetDoubleFromObjProto TclWrapper::get_Tcl_GetDoubleFromObj() {
+	return _Tcl_GetDoubleFromObj;
 }
 
 _Tcl_GetStringFromObjProto TclWrapper::get_Tcl_GetStringFromObj() {

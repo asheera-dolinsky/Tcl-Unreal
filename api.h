@@ -23,6 +23,7 @@
 */
 
 #include "tcl.h"
+#include <string.h>
 
 typedef Tcl_Interp*(*_Tcl_CreateInterpProto)(void);
 typedef int(*_Tcl_EvalProto)(Tcl_Interp*, const char*);
