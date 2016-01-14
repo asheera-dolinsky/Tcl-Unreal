@@ -46,7 +46,6 @@ UTclComponent::UTclComponent()
 
 }
 
-
 // Called when the game starts
 void UTclComponent::BeginPlay()
 {
@@ -164,7 +163,7 @@ int UTclComponent::eval(const char* code) {
 
 void UTclComponent::Define(FString Location, FString Key, UObject* Object) {
 	if (Location.IsEmpty()) {
-		UE_LOG(LogClass, Error, TEXT("Location must be filled if Filename is empty!"))
+		UE_LOG(LogClass, Error, TEXT("Location must be filled if Key is empty!"))
 		return;
 	}
 	if (Key.IsEmpty()) {

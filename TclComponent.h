@@ -101,7 +101,7 @@ public:
 	virtual void BeginPlay() override;
 	
 	// Called every frame
-	virtual void TickComponent( float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction ) override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	static bool handleIsMissing();
 	static _Tcl_GetLongFromObjProto get_Tcl_GetLongFromObj();
@@ -148,13 +148,44 @@ public:
 	void Define(FString Location, FString Key, UObject* Object);
 
 	UFUNCTION(BlueprintCallable, Category = "Tcl", CustomThunk, meta = (CustomStructureParam = "Struct"))
-	void DefineStruct(FString Location, UProperty* Struct);
+	void DefineStruct(FString Location, FString Key, UProperty* Struct);
 	DECLARE_FUNCTION(execDefineStruct) {
 		P_GET_PROPERTY(UStrProperty, Location);
+		P_GET_PROPERTY(UStrProperty, Key);
 		Stack.StepCompiledIn<UStructProperty>(nullptr);
 		void* structPtr = Stack.MostRecentPropertyAddress;
 		P_FINISH;
-		define(TCHAR_TO_ANSI(*Location), (ClientData)structPtr);
+		if (Location.IsEmpty()) {
+			UE_LOG(LogClass, Error, TEXT("Location must be filled if Key is empty!"))
+			return;
+		}
+		if (Key.IsEmpty()) {
+			define(TCHAR_TO_ANSI(*Location), (ClientData)structPtr);
+		}
+		else {
+			define(TCHAR_TO_ANSI(*Location), (ClientData)structPtr, TCHAR_TO_ANSI(*Key));
+		}
+
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Tcl", CustomThunk, meta = (ArrayParm = "Objects"))
+	void DefineMany(FString Location, FString Key, const TArray<int32>& Objects);
+	DECLARE_FUNCTION(execDefineMany) {
+		P_GET_PROPERTY(UStrProperty, Location);
+		P_GET_PROPERTY(UStrProperty, Key);
+		Stack.StepCompiledIn<UArrayProperty>(nullptr);
+		void* arrPtr = Stack.MostRecentPropertyAddress;
+		P_FINISH;
+		if (Location.IsEmpty()) {
+			UE_LOG(LogClass, Error, TEXT("Location must be filled if Key is empty!"))
+			return;
+		}
+		if (Key.IsEmpty()) {
+			define(TCHAR_TO_ANSI(*Location), (ClientData)arrPtr);
+		}
+		else {
+			define(TCHAR_TO_ANSI(*Location), (ClientData)arrPtr, TCHAR_TO_ANSI(*Key));
+		}
 
 	}
 
@@ -191,9 +222,19 @@ struct IMPL_CONVERT<bool> {
 		return result;
 	}
 };
+template <>  // int32
+struct IMPL_CONVERT<int32> {
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int32* val) {
+		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		long in = 0;
+		auto result = UTclComponent::get_Tcl_GetLongFromObj()(interpreter, obj, &in);
+		*val = static_cast<int32>(in);
+		return result;
+	}
+};
 template <>  // int64
 struct IMPL_CONVERT<int64> {
-	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int64* val) {
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int32* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		long in = 0;
 		auto result = UTclComponent::get_Tcl_GetLongFromObj()(interpreter, obj, &in);
