@@ -144,10 +144,10 @@ public:
 		}
 	}
 
-	UFUNCTION(BlueprintCallable, Category = "Tcl")
+	UFUNCTION(BlueprintCallable, Category = Tcl)
 	void Define(FString Location, FString Key, UObject* Object);
 
-	UFUNCTION(BlueprintCallable, Category = "Tcl", CustomThunk, meta = (CustomStructureParam = "Struct"))
+	UFUNCTION(BlueprintCallable, Category = Tcl, CustomThunk, meta = (CustomStructureParam = Struct))
 	void DefineStruct(FString Location, FString Key, UProperty* Struct);
 	DECLARE_FUNCTION(execDefineStruct) {
 		P_GET_PROPERTY(UStrProperty, Location);
@@ -168,7 +168,7 @@ public:
 
 	}
 
-	UFUNCTION(BlueprintCallable, Category = "Tcl", CustomThunk, meta = (ArrayParm = "Objects"))
+	UFUNCTION(BlueprintCallable, Category = Tcl, CustomThunk, meta = (ArrayParm = Objects))
 	void DefineMany(FString Location, FString Key, const TArray<int32>& Objects);
 	DECLARE_FUNCTION(execDefineMany) {
 		P_GET_PROPERTY(UStrProperty, Location);
@@ -189,7 +189,7 @@ public:
 
 	}
 
-	UFUNCTION(BlueprintCallable, Category = "Tcl")
+	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 Eval(FString Filename, FString Code);
 	
 };
