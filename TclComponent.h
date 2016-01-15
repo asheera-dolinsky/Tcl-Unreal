@@ -201,7 +201,7 @@ template <typename T>  // UStruct and TArray<T>
 struct IMPL_CONVERT {
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-		T deref = *((T*)(obj->internalRep.otherValuePtr));
+		auto deref = *((T*)(obj->internalRep.otherValuePtr));
 		*val = deref;
 		return TCL_OK;
 	}
@@ -211,14 +211,6 @@ struct IMPL_CONVERT<T*> {
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		*val = (T*)(obj->internalRep.otherValuePtr);
-		return TCL_OK;
-	}
-};
-template <>  // UClass
-struct IMPL_CONVERT<UClass*> {
-	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, UClass** val) {
-		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-		*val = (UClass*)(obj->internalRep.otherValuePtr);
 		return TCL_OK;
 	}
 };
