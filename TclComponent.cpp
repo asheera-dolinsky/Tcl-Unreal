@@ -175,6 +175,20 @@ void UTclComponent::Define(FString Location, FString Key, UObject* Object) {
 
 }
 
+void UTclComponent::DefineClass(FString Location, FString Key, UClass* Cls) {
+	if (Location.IsEmpty()) {
+		UE_LOG(LogClass, Error, TEXT("Location must be filled if Key is empty!"))
+		return;
+	}
+	if (Key.IsEmpty()) {
+		define(TCHAR_TO_ANSI(*Location), (ClientData)Cls);
+	}
+	else {
+		define(TCHAR_TO_ANSI(*Location), (ClientData)Cls, TCHAR_TO_ANSI(*Key));
+	}
+
+}
+
 int32 UTclComponent::Eval(FString Filename, FString Code) {
 	if(!Filename.IsEmpty()) {
 		auto fname = FPaths::GameContentDir() + "Scripts/" + Filename;

@@ -24,7 +24,6 @@
 
 /*
 	TODO:
-		0) write a blueprint interface library for Eval, Define, Define Struct (simply adapt from the current embedded state)
 		1) handle error codes in IMPL_CONVERT for more safety
 		2) devise a way to check for nullpointers before going into UFUNCTIONs
 		3) make the code as safe as humanly possible
@@ -190,12 +189,15 @@ public:
 	}
 
 	UFUNCTION(BlueprintCallable, Category = Tcl)
+	void DefineClass(FString Location, FString Key, UClass* Cls);
+
+	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 Eval(FString Filename, FString Code);
 	
 };
 
 
-template <typename T>  // USTRUCT
+template <typename T>  // UStruct and TArray<T>
 struct IMPL_CONVERT {
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
@@ -204,11 +206,19 @@ struct IMPL_CONVERT {
 		return TCL_OK;
 	}
 };
-template <typename T>  // UCLASS
+template <typename T>  // UObject
 struct IMPL_CONVERT<T*> {
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		*val = (T*)(obj->internalRep.otherValuePtr);
+		return TCL_OK;
+	}
+};
+template <>  // UClass
+struct IMPL_CONVERT<UClass*> {
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, UClass** val) {
+		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		*val = (UClass*)(obj->internalRep.otherValuePtr);
 		return TCL_OK;
 	}
 };
