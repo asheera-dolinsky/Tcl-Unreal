@@ -61,9 +61,8 @@ struct WrapperContainer {
 };
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class PHANTOMGUNSDEMO_API UTclComponent : public UActorComponent
-{
-	GENERATED_BODY()
+class PHANTOMGUNSDEMO_API UTclComponent : public UActorComponent {
+	GENERATED_UCLASS_BODY()
 protected:
 	static void* handle;
 	static _Tcl_CreateInterpProto _Tcl_CreateInterp;
@@ -196,7 +195,6 @@ public:
 	
 };
 
-
 template <typename T>  // UStruct and TArray<T>
 struct IMPL_CONVERT {
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
@@ -206,7 +204,7 @@ struct IMPL_CONVERT {
 		return TCL_OK;
 	}
 };
-template <typename T>  // UObject
+template <typename T>  // UObject* and TSubjectOf, use bind<...TSubclassOf<T>*...> instead of bind<...TSubclassOf<T>...>
 struct IMPL_CONVERT<T*> {
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }

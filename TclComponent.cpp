@@ -37,8 +37,7 @@ _Tcl_GetDoubleFromObjProto UTclComponent::_Tcl_GetDoubleFromObj = nullptr;
 _Tcl_GetStringFromObjProto UTclComponent::_Tcl_GetStringFromObj = nullptr;
 
 // Sets default values for this component's properties
-UTclComponent::UTclComponent()
-{
+UTclComponent::UTclComponent(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer) {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	bWantsBeginPlay = true;
@@ -47,8 +46,7 @@ UTclComponent::UTclComponent()
 }
 
 // Called when the game starts
-void UTclComponent::BeginPlay()
-{
+void UTclComponent::BeginPlay() {
 	Super::BeginPlay();
 	if (handle == nullptr) {
 		auto dllPath = FPaths::Combine(*FPaths::GameDir(), TEXT("ThirdParty/"), TEXT(_TCL_DLL_FNAME_));
@@ -100,9 +98,8 @@ void UTclComponent::BeginPlay()
 	
 }
 
-void UTclComponent::TickComponent( float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction )
-{
-	Super::TickComponent( DeltaTime, TickType, ThisTickFunction );
+void UTclComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) {
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 }
 
