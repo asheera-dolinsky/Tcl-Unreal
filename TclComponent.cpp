@@ -30,8 +30,14 @@ void* UTclComponent::handle = nullptr;
 _Tcl_CreateInterpProto UTclComponent::_Tcl_CreateInterp = nullptr;
 _Tcl_EvalProto UTclComponent::_Tcl_Eval = nullptr;
 _Tcl_CreateObjCommandProto UTclComponent::_Tcl_CreateObjCommand = nullptr;
+_Tcl_SetObjResultProto UTclComponent::_Tcl_SetObjResult;
 _Tcl_NewObjProto UTclComponent::_Tcl_NewObj = nullptr;
+_Tcl_NewBooleanObjProto UTclComponent::_Tcl_NewBooleanObj = nullptr;
+_Tcl_NewLongObjProto UTclComponent::_Tcl_NewLongObj = nullptr;
+_Tcl_NewDoubleObjProto UTclComponent::_Tcl_NewDoubleObj = nullptr;
+_Tcl_NewStringObjProto UTclComponent::_Tcl_NewStringObj = nullptr;
 _Tcl_SetVar2ExProto UTclComponent::_Tcl_SetVar2Ex = nullptr;
+_Tcl_GetBooleanFromObjProto UTclComponent::_Tcl_GetBooleanFromObj = nullptr;
 _Tcl_GetLongFromObjProto UTclComponent::_Tcl_GetLongFromObj = nullptr;
 _Tcl_GetDoubleFromObjProto UTclComponent::_Tcl_GetDoubleFromObj = nullptr;
 _Tcl_GetStringFromObjProto UTclComponent::_Tcl_GetStringFromObj = nullptr;
@@ -61,22 +67,39 @@ void UTclComponent::BeginPlay() {
 				_Tcl_Eval = (_Tcl_EvalProto)FPlatformProcess::GetDllExport(handle, *procName);
 				procName = "Tcl_CreateObjCommand";
 				_Tcl_CreateObjCommand = (_Tcl_CreateObjCommandProto)FPlatformProcess::GetDllExport(handle, *procName);
+				procName = "Tcl_SetObjResult";
+				_Tcl_SetObjResult = (_Tcl_SetObjResultProto)FPlatformProcess::GetDllExport(handle, *procName);
 				procName = "Tcl_NewObj";
 				_Tcl_NewObj = (_Tcl_NewObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				procName = "Tcl_NewBooleanObj";
+				_Tcl_NewBooleanObj = (_Tcl_NewBooleanObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				procName = "Tcl_NewLongObj";
+				_Tcl_NewLongObj = (_Tcl_NewLongObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				procName = "Tcl_NewDoubleObj";
+				_Tcl_NewDoubleObj = (_Tcl_NewDoubleObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				procName = "Tcl_NewStringObj";
+				_Tcl_NewStringObj = (_Tcl_NewStringObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 				procName = "Tcl_SetVar2Ex";
 				_Tcl_SetVar2Ex = (_Tcl_SetVar2ExProto)FPlatformProcess::GetDllExport(handle, *procName);
+				procName = "Tcl_GetBooleanFromObj";
+				_Tcl_GetBooleanFromObj = (_Tcl_GetBooleanFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 				procName = "Tcl_GetLongFromObj";
 				_Tcl_GetLongFromObj = (_Tcl_GetLongFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 				procName = "Tcl_GetDoubleFromObj";
 				_Tcl_GetDoubleFromObj = (_Tcl_GetDoubleFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
 				procName = "Tcl_GetStringFromObj";
 				_Tcl_GetStringFromObj = (_Tcl_GetStringFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
-
 				if (_Tcl_CreateInterp == nullptr ||
 					_Tcl_Eval == nullptr ||
 					_Tcl_CreateObjCommand == nullptr ||
+					_Tcl_SetObjResult == nullptr ||
 					_Tcl_NewObj == nullptr ||
+					_Tcl_NewBooleanObj == nullptr ||
+					_Tcl_NewLongObj == nullptr ||
+					_Tcl_NewDoubleObj == nullptr ||
+					_Tcl_NewStringObj == nullptr ||
 					_Tcl_SetVar2Ex == nullptr ||
+					_Tcl_GetBooleanFromObj == nullptr ||
 					_Tcl_GetLongFromObj == nullptr ||
 					_Tcl_GetDoubleFromObj == nullptr ||
 					_Tcl_GetStringFromObj == nullptr) {
@@ -112,6 +135,8 @@ bool UTclComponent::handleIsMissing() { return handle == nullptr; }
 
 
 _Tcl_CreateObjCommandProto UTclComponent::get_Tcl_CreateObjCommand() { return _Tcl_CreateObjCommand; }
+_Tcl_SetObjResultProto UTclComponent::get_Tcl_SetObjResult() { return _Tcl_SetObjResult; }
+_Tcl_GetBooleanFromObjProto UTclComponent::get_Tcl_GetBooleanFromObj() { return _Tcl_GetBooleanFromObj; }
 _Tcl_GetLongFromObjProto UTclComponent::get_Tcl_GetLongFromObj() { return _Tcl_GetLongFromObj; }
 _Tcl_GetDoubleFromObjProto UTclComponent::get_Tcl_GetDoubleFromObj() { return _Tcl_GetDoubleFromObj; }
 _Tcl_GetStringFromObjProto UTclComponent::get_Tcl_GetStringFromObj() { return _Tcl_GetStringFromObj; }
