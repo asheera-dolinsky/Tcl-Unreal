@@ -33,6 +33,7 @@
 #pragma once
 
 #define _TCL_DLL_FNAME_ "tcl86t.dll"
+#define _STRUCT_OFFSET_ 2
 #include "Api.hpp"
 #include "TupleUtils.hpp"
 #include "Components/ActorComponent.h"
@@ -46,7 +47,7 @@ struct COMPILE_ON_PARAMS {
 	template<typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static void EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
 		Tcl_Obj* objects[numberOfParams];
 		for (int i=0; i<numberOfParams; i++) { objects[i] = const_cast<Tcl_Obj*>(arguments[i+1]); }
-		POPULATE<numberOfParams+1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
+		POPULATE<numberOfParams+_STRUCT_OFFSET_>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
 };
 template <>
@@ -277,11 +278,11 @@ struct IMPL_CONVERT<FString> {
 
 template <int idx> struct POPULATE {
 	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
-		IMPL_CONVERT<std::tuple_element<idx, TupleSpecialization>::type>::CALL(interpreter, objects[idx-2], &(get<idx>(values)));
+		IMPL_CONVERT<std::tuple_element<idx, TupleSpecialization>::type>::CALL(interpreter, objects[idx-_STRUCT_OFFSET_-1], &(get<idx>(values)));
 		POPULATE<idx-1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
 };
-template <> struct POPULATE<1> {
+template <> struct POPULATE<_STRUCT_OFFSET_> {
 	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {}
 };
 
@@ -299,23 +300,24 @@ template <typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
 					return TCL_ERROR;
 				}
 
-				tuple<Cls*, FString, ParamTypes...> values;
+				tuple<Cls*, Tcl_Interp*, FString, ParamTypes...> values;
 				get<0>(values) = data->self;
-				get<1>(values) = data->name;
+				get<1>(values) = interpreter;
+				get<2>(values) = data->name;
 
-				COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<Cls*, FString, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
+				COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<Cls*, Tcl_Interp*, FString, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
 
-				auto delegateWrapper = [](Cls* self, FString name, ParamTypes... args) -> bool {
+				auto delegateWrapper = [](Cls* self, Tcl_Interp* interpreter, FString name, ParamTypes... args) -> bool {
 					TBaseDelegate<ReturnType, ParamTypes...> del;
 					del.BindUFunction(self, TCHAR_TO_ANSI(*name));
 					if(del.IsBound()) { 
 						auto ret = del.Execute(args...);
 						//del.Execute(args...);
-						//UTclComponent::processReturn<ReturnType>(interpreter, ret);
+						UTclComponent::processReturn<ReturnType>(interpreter, ret);
 					}
 					return del.IsBound();
 				};
-				typedef bool(*DelegateWrapperFptr)(Cls* self, FString name, ParamTypes...);
+				typedef bool(*DelegateWrapperFptr)(Cls* self, Tcl_Interp*, FString name, ParamTypes...);
 				auto ok = apply((DelegateWrapperFptr)delegateWrapper, values);
 				return ok? TCL_OK : TCL_ERROR;
 			};
@@ -342,18 +344,19 @@ template <> struct COMPILE_DELEGATE_ON_PARAMS<void> {
 					return TCL_ERROR;
 				}
 
-				tuple<Cls*, FString, ParamTypes...> values;
+				tuple<Cls*, Tcl_Interp*, FString, ParamTypes...> values;
 				get<0>(values) = data->self;
-				get<1>(values) = data->name;
+				get<1>(values) = interpreter;
+				get<2>(values) = data->name;
 
-				COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<Cls*, FString, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
+				COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<Cls*, Tcl_Interp*, FString, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
 
-				auto delegateWrapper = [](Cls* self, FString name, ParamTypes... args) -> bool {
+				auto delegateWrapper = [](Cls* self, Tcl_Interp* interpreter, FString name, ParamTypes... args) -> bool {
 					TBaseDelegate<void, ParamTypes...> del;
 					del.BindUFunction(self, TCHAR_TO_ANSI(*name));
 					return del.ExecuteIfBound(args...);
 				};
-				typedef bool(*DelegateWrapperFptr)(Cls* self, FString name, ParamTypes...);
+				typedef bool(*DelegateWrapperFptr)(Cls* self, Tcl_Interp*, FString name, ParamTypes...);
 				auto ok = apply((DelegateWrapperFptr)delegateWrapper, values);
 				return ok? TCL_OK : TCL_ERROR;
 			};
