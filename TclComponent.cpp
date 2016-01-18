@@ -62,33 +62,33 @@ void UTclComponent::BeginPlay() {
 			else {
 				FString procName = "";
 				procName = "Tcl_CreateInterp";
-				_Tcl_CreateInterp = (_Tcl_CreateInterpProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_CreateInterp = static_cast<_Tcl_CreateInterpProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_Eval";
-				_Tcl_Eval = (_Tcl_EvalProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_Eval = static_cast<_Tcl_EvalProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_CreateObjCommand";
-				_Tcl_CreateObjCommand = (_Tcl_CreateObjCommandProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_CreateObjCommand = static_cast<_Tcl_CreateObjCommandProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_SetObjResult";
-				_Tcl_SetObjResult = (_Tcl_SetObjResultProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_SetObjResult = static_cast<_Tcl_SetObjResultProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewObj";
-				_Tcl_NewObj = (_Tcl_NewObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_NewObj = static_cast<_Tcl_NewObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewBooleanObj";
-				_Tcl_NewBooleanObj = (_Tcl_NewBooleanObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_NewBooleanObj = static_cast<_Tcl_NewBooleanObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewLongObj";
-				_Tcl_NewLongObj = (_Tcl_NewLongObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_NewLongObj = static_cast<_Tcl_NewLongObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewDoubleObj";
-				_Tcl_NewDoubleObj = (_Tcl_NewDoubleObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_NewDoubleObj = static_cast<_Tcl_NewDoubleObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewStringObj";
-				_Tcl_NewStringObj = (_Tcl_NewStringObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_NewStringObj = static_cast<_Tcl_NewStringObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_SetVar2Ex";
-				_Tcl_SetVar2Ex = (_Tcl_SetVar2ExProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_SetVar2Ex = static_cast<_Tcl_SetVar2ExProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_GetBooleanFromObj";
-				_Tcl_GetBooleanFromObj = (_Tcl_GetBooleanFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_GetBooleanFromObj = static_cast<_Tcl_GetBooleanFromObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_GetLongFromObj";
-				_Tcl_GetLongFromObj = (_Tcl_GetLongFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_GetLongFromObj = static_cast<_Tcl_GetLongFromObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_GetDoubleFromObj";
-				_Tcl_GetDoubleFromObj = (_Tcl_GetDoubleFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_GetDoubleFromObj = static_cast<_Tcl_GetDoubleFromObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_GetStringFromObj";
-				_Tcl_GetStringFromObj = (_Tcl_GetStringFromObjProto)FPlatformProcess::GetDllExport(handle, *procName);
+				_Tcl_GetStringFromObj = static_cast<_Tcl_GetStringFromObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				if (_Tcl_CreateInterp == nullptr ||
 					_Tcl_Eval == nullptr ||
 					_Tcl_CreateObjCommand == nullptr ||
@@ -212,10 +212,10 @@ void UTclComponent::DefineClass(FString Location, FString Key, UClass* Cls) {
 		return;
 	}
 	if (Key.IsEmpty()) {
-		define(TCHAR_TO_ANSI(*Location), (ClientData)Cls);
+		define(TCHAR_TO_ANSI(*Location), static_cast<ClientData>(Cls));
 	}
 	else {
-		define(TCHAR_TO_ANSI(*Location), (ClientData)Cls, TCHAR_TO_ANSI(*Key));
+		define(TCHAR_TO_ANSI(*Location), static_cast<ClientData>(Cls), TCHAR_TO_ANSI(*Key));
 	}
 
 }

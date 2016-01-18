@@ -118,7 +118,7 @@ public:
 	static int Tcl_SetFromAnyProc(Tcl_Interp*, Tcl_Obj*);
 
 	template <typename Cls> static void freeWrapperContainer(ClientData clientData) {
-		auto data = (WrapperContainer<Cls>*)clientData;
+		auto data = static_cast<WrapperContainer<Cls>*>(clientData);
 		delete data;
 		data = nullptr; 
 	}
@@ -143,10 +143,10 @@ public:
 			return;
 		}
 		if (Key.IsEmpty()) {
-			define(TCHAR_TO_ANSI(*Location), (ClientData)structPtr);
+			define(TCHAR_TO_ANSI(*Location), static_cast<ClientData>(structPtr));
 		}
 		else {
-			define(TCHAR_TO_ANSI(*Location), (ClientData)structPtr, TCHAR_TO_ANSI(*Key));
+			define(TCHAR_TO_ANSI(*Location), static_cast<ClientData>(structPtr), TCHAR_TO_ANSI(*Key));
 		}
 
 	}
@@ -164,10 +164,10 @@ public:
 			return;
 		}
 		if (Key.IsEmpty()) {
-			define(TCHAR_TO_ANSI(*Location), (ClientData)arrPtr);
+			define(TCHAR_TO_ANSI(*Location), static_cast<ClientData>(arrPtr));
 		}
 		else {
-			define(TCHAR_TO_ANSI(*Location), (ClientData)arrPtr, TCHAR_TO_ANSI(*Key));
+			define(TCHAR_TO_ANSI(*Location), static_cast<ClientData>(arrPtr), TCHAR_TO_ANSI(*Key));
 		}
 
 	}
@@ -184,7 +184,7 @@ template <typename T>  // UStruct and TArray<T>
 struct IMPL_CONVERT {
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-		auto deref = *((T*)(obj->internalRep.otherValuePtr));
+		auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));
 		*val = deref;
 		return TCL_OK;
 	}
@@ -193,7 +193,7 @@ template <typename T>  // UObject* and TSubjectOf, use bind<...TSubclassOf<T>*..
 struct IMPL_CONVERT<T*> {
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-		*val = (T*)(obj->internalRep.otherValuePtr);
+		*val = static_cast<T*>(obj->internalRep.otherValuePtr);
 		return TCL_OK;
 	}
 };
@@ -267,8 +267,18 @@ struct PROCESS_RETURN {
 				UE_LOG(LogClass, Log, TEXT("Tcl has garbage collected an object"))
 		};
 		auto obj = UTclComponent::get_Tcl_NewObj()();
-		obj->internalRep.otherValuePtr = new T(val);
+		obj->internalRep.otherValuePtr = static_cast<ClientData>(new T(val));
 		obj->typePtr = new Tcl_ObjType({ "An object constructed within Tcl", cleanUpFunc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc });
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template <typename T>
+struct PROCESS_RETURN<T*> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, T* val) {
+		static const Tcl_ObjType type = { "ClientData", &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
+		auto obj = UTclComponent::get_Tcl_NewObj()();
+		obj->internalRep.otherValuePtr = static_cast<ClientData>(val);
+		val->typePtr = &type;
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
@@ -323,7 +333,7 @@ template <typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
 
 				numberOfArgs--;  // proc is counted too
 
-				auto data = (WrapperContainer<Cls>*)clientData;
+				auto data = static_cast<WrapperContainer<Cls>*>(clientData);
 				if (numberOfArgs != numberOfParams) {
 					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
 					return TCL_ERROR;
@@ -346,12 +356,12 @@ template <typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
 					return del.IsBound();
 				};
 				typedef bool(*DelegateWrapperFptr)(Cls* self, Tcl_Interp*, FString name, ParamTypes...);
-				auto ok = apply((DelegateWrapperFptr)delegateWrapper, values);
+				auto ok = apply(static_cast<DelegateWrapperFptr>(delegateWrapper), values);
 				return ok? TCL_OK : TCL_ERROR;
 			};
 			const char* fname = TCHAR_TO_ANSI(*name);
 			auto data = new WrapperContainer<Cls>({ self, name });
-			UTclComponent::get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, (ClientData)data, &UTclComponent::freeWrapperContainer<Cls>);
+			UTclComponent::get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<Cls>);
 			data = nullptr;
 			return TCL_OK;
 		}
@@ -366,7 +376,7 @@ template <> struct COMPILE_DELEGATE_ON_PARAMS<void> {
 
 				numberOfArgs--;  // proc is counted too
 
-				auto data = (WrapperContainer<Cls>*)clientData;
+				auto data = static_cast<WrapperContainer<Cls>*>(clientData);
 				if (numberOfArgs != numberOfParams) {
 					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
 					return TCL_ERROR;
@@ -385,12 +395,12 @@ template <> struct COMPILE_DELEGATE_ON_PARAMS<void> {
 					return del.ExecuteIfBound(args...);
 				};
 				typedef bool(*DelegateWrapperFptr)(Cls* self, Tcl_Interp*, FString name, ParamTypes...);
-				auto ok = apply((DelegateWrapperFptr)delegateWrapper, values);
+				auto ok = apply(static_cast<DelegateWrapperFptr>(delegateWrapper), values);
 				return ok? TCL_OK : TCL_ERROR;
 			};
 			const char* fname = TCHAR_TO_ANSI(*name);
 			auto data = new WrapperContainer<Cls>({ self, name });
-			UTclComponent::get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, (ClientData)data, &UTclComponent::freeWrapperContainer<Cls>);
+			UTclComponent::get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<Cls>);
 			data = nullptr;
 			return TCL_OK;
 		}
