@@ -170,7 +170,7 @@ int UTclComponent::define(char* location, UObject* ptr, char* scope, int flags) 
 	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 	else {
 		auto val = _Tcl_NewObj();
-		val->internalRep.otherValuePtr = (ClientData)ptr;
+		val->internalRep.otherValuePtr = static_cast<ClientData>(ptr);
 		val->typePtr = &type;
 		*val = *(_Tcl_SetVar2Ex(interpreter, location, scope, val, flags));
 		FString loc = location;

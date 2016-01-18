@@ -278,7 +278,7 @@ struct PROCESS_RETURN<T*> {
 		static const Tcl_ObjType type = { "ClientData", &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
 		auto obj = UTclComponent::get_Tcl_NewObj()();
 		obj->internalRep.otherValuePtr = static_cast<ClientData>(val);
-		val->typePtr = &type;
+		obj->typePtr = &type;
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
