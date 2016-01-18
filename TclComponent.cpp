@@ -133,7 +133,6 @@ int UTclComponent::Tcl_SetFromAnyProc(Tcl_Interp* interp, Tcl_Obj* obj) { return
 
 bool UTclComponent::handleIsMissing() { return handle == nullptr; }
 
-
 _Tcl_CreateObjCommandProto UTclComponent::get_Tcl_CreateObjCommand() { return _Tcl_CreateObjCommand; }
 _Tcl_SetObjResultProto UTclComponent::get_Tcl_SetObjResult() { return _Tcl_SetObjResult; }
 _Tcl_GetBooleanFromObjProto UTclComponent::get_Tcl_GetBooleanFromObj() { return _Tcl_GetBooleanFromObj; }

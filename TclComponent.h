@@ -118,14 +118,17 @@ public:
 		data = nullptr; 
 	}
 
-	template <typename T> void processReturn(Tcl_Interp* interpreter, T ptr) {
-	/*
-		static const Tcl_ObjType type = { "ClientData", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
-		auto val = _Tcl_NewObj();
-		val->internalRep.otherValuePtr = ptr;
-		val->typePtr = &type;
-		_Tcl_SetObjResult(interpreter, val);
-	*/
+	template <typename T> static void processReturn(Tcl_Interp* interpreter, T val) {
+		auto cleanUpFunc = [](Tcl_Obj* obj) -> void {
+				auto ptr = static_cast<T*>(obj->internalRep.otherValuePtr);
+				delete ptr;
+				delete obj->typePtr;
+				UE_LOG(LogClass, Log, TEXT("Tcl has garbage collected an object"))
+		};
+		auto obj = _Tcl_NewObj();
+		obj->internalRep.otherValuePtr = new T(val);
+		obj->typePtr = new Tcl_ObjType({ "An object constructed within Tcl", cleanUpFunc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc });
+		_Tcl_SetObjResult(interpreter, obj);
 	}
 	template <> static void processReturn<bool>(Tcl_Interp* interpreter, bool val) {
 		auto obj = _Tcl_NewBooleanObj(val);
