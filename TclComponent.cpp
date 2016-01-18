@@ -135,6 +135,11 @@ bool UTclComponent::handleIsMissing() { return handle == nullptr; }
 
 _Tcl_CreateObjCommandProto UTclComponent::get_Tcl_CreateObjCommand() { return _Tcl_CreateObjCommand; }
 _Tcl_SetObjResultProto UTclComponent::get_Tcl_SetObjResult() { return _Tcl_SetObjResult; }
+_Tcl_NewObjProto UTclComponent::get_Tcl_NewObj() { return _Tcl_NewObj; }
+_Tcl_NewBooleanObjProto UTclComponent::get_Tcl_NewBooleanObj() { return _Tcl_NewBooleanObj; }
+_Tcl_NewLongObjProto UTclComponent::get_Tcl_NewLongObj() { return _Tcl_NewLongObj; };
+_Tcl_NewDoubleObjProto UTclComponent::get_Tcl_NewDoubleObj() { return _Tcl_NewDoubleObj; }
+_Tcl_NewStringObjProto UTclComponent::get_Tcl_NewStringObj() { return _Tcl_NewStringObj; }
 _Tcl_GetBooleanFromObjProto UTclComponent::get_Tcl_GetBooleanFromObj() { return _Tcl_GetBooleanFromObj; }
 _Tcl_GetLongFromObjProto UTclComponent::get_Tcl_GetLongFromObj() { return _Tcl_GetLongFromObj; }
 _Tcl_GetDoubleFromObjProto UTclComponent::get_Tcl_GetDoubleFromObj() { return _Tcl_GetDoubleFromObj; }

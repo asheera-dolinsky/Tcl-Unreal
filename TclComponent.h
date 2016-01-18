@@ -82,11 +82,6 @@ protected:
 	static _Tcl_GetLongFromObjProto _Tcl_GetLongFromObj;
 	static _Tcl_GetDoubleFromObjProto _Tcl_GetDoubleFromObj;
 	static _Tcl_GetStringFromObjProto _Tcl_GetStringFromObj;
-	
-	static void Tcl_FreeInternalRepProc(Tcl_Obj*);
-	static void Tcl_DupInternalRepProc(Tcl_Obj*, Tcl_Obj*);
-	static void Tcl_UpdateStringProc(Tcl_Obj *obj);
-	static int Tcl_SetFromAnyProc(Tcl_Interp*, Tcl_Obj*);
 
 	Tcl_Interp* interpreter = nullptr;
 
@@ -107,52 +102,25 @@ public:
 	static bool handleIsMissing();
 	static _Tcl_CreateObjCommandProto get_Tcl_CreateObjCommand();
 	static _Tcl_SetObjResultProto get_Tcl_SetObjResult();
+	static _Tcl_NewObjProto get_Tcl_NewObj();
+	static _Tcl_NewBooleanObjProto get_Tcl_NewBooleanObj();
+	static _Tcl_NewLongObjProto get_Tcl_NewLongObj();
+	static _Tcl_NewDoubleObjProto get_Tcl_NewDoubleObj();
+	static _Tcl_NewStringObjProto get_Tcl_NewStringObj();
 	static _Tcl_GetBooleanFromObjProto get_Tcl_GetBooleanFromObj();
 	static _Tcl_GetLongFromObjProto get_Tcl_GetLongFromObj();
 	static _Tcl_GetDoubleFromObjProto get_Tcl_GetDoubleFromObj();
 	static _Tcl_GetStringFromObjProto get_Tcl_GetStringFromObj();
 
+	static void Tcl_FreeInternalRepProc(Tcl_Obj*);
+	static void Tcl_DupInternalRepProc(Tcl_Obj*, Tcl_Obj*);
+	static void Tcl_UpdateStringProc(Tcl_Obj *obj);
+	static int Tcl_SetFromAnyProc(Tcl_Interp*, Tcl_Obj*);
+
 	template <typename Cls> static void freeWrapperContainer(ClientData clientData) {
 		auto data = (WrapperContainer<Cls>*)clientData;
 		delete data;
 		data = nullptr; 
-	}
-
-	template <typename T> static void processReturn(Tcl_Interp* interpreter, T val) {
-		auto cleanUpFunc = [](Tcl_Obj* obj) -> void {
-				auto ptr = static_cast<T*>(obj->internalRep.otherValuePtr);
-				delete ptr;
-				delete obj->typePtr;
-				UE_LOG(LogClass, Log, TEXT("Tcl has garbage collected an object"))
-		};
-		auto obj = _Tcl_NewObj();
-		obj->internalRep.otherValuePtr = new T(val);
-		obj->typePtr = new Tcl_ObjType({ "An object constructed within Tcl", cleanUpFunc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc });
-		_Tcl_SetObjResult(interpreter, obj);
-	}
-	template <> static void processReturn<bool>(Tcl_Interp* interpreter, bool val) {
-		auto obj = _Tcl_NewBooleanObj(val);
-		_Tcl_SetObjResult(interpreter, obj);
-	}
-	template <> static void processReturn<int32>(Tcl_Interp* interpreter, int32 val) {
-		auto obj = _Tcl_NewLongObj(val);
-		_Tcl_SetObjResult(interpreter, obj);
-	}
-	template <> static void processReturn<uint32>(Tcl_Interp* interpreter, uint32 val) {
-		auto obj = _Tcl_NewLongObj(val);
-		_Tcl_SetObjResult(interpreter, obj);
-	}
-	template <> static void processReturn<int64>(Tcl_Interp* interpreter, int64 val) {
-		auto obj = _Tcl_NewLongObj(val);
-		_Tcl_SetObjResult(interpreter, obj);
-	}
-	template <> static void processReturn<float>(Tcl_Interp* interpreter, float val) {
-		auto obj = _Tcl_NewDoubleObj(val);
-		_Tcl_SetObjResult(interpreter, obj);
-	}
-	template <> static void processReturn<FString>(Tcl_Interp* interpreter, FString val) {
-		auto obj = _Tcl_NewStringObj(TCHAR_TO_ANSI(*val), -1);
-		_Tcl_SetObjResult(interpreter, obj);
 	}
 	
 	template<typename Cls, typename ReturnType, typename ...ParamTypes> int bind(Cls* self, FString name) {
@@ -289,6 +257,64 @@ template <> struct POPULATE<_STRUCT_OFFSET_> {
 	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {}
 };
 
+template <typename T>
+struct PROCESS_RETURN {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, T val) {
+		auto cleanUpFunc = [](Tcl_Obj* obj) -> void {
+				auto ptr = static_cast<T*>(obj->internalRep.otherValuePtr);
+				delete ptr;
+				delete obj->typePtr;
+				UE_LOG(LogClass, Log, TEXT("Tcl has garbage collected an object"))
+		};
+		auto obj = UTclComponent::get_Tcl_NewObj()();
+		obj->internalRep.otherValuePtr = new T(val);
+		obj->typePtr = new Tcl_ObjType({ "An object constructed within Tcl", cleanUpFunc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc });
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template <>
+struct PROCESS_RETURN<bool> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, bool val) {
+		auto obj = UTclComponent::get_Tcl_NewBooleanObj()(val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template <>
+struct PROCESS_RETURN<int32> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, int32 val) {
+		auto obj = UTclComponent::get_Tcl_NewLongObj()(val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template <>
+struct PROCESS_RETURN<uint32> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, uint32 val) {
+		auto obj = UTclComponent::get_Tcl_NewLongObj()(val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template <>
+struct PROCESS_RETURN<int64> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, int64 val) {
+		auto obj = UTclComponent::get_Tcl_NewLongObj()(val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template <>
+struct PROCESS_RETURN<float> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, float val) {
+		auto obj = UTclComponent::get_Tcl_NewDoubleObj()(val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template <>
+struct PROCESS_RETURN<FString> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, FString val) {
+		auto obj =  UTclComponent::get_Tcl_NewStringObj()(TCHAR_TO_ANSI(*val), -1);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+
 template <typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
 	template<typename Cls, typename ...ParamTypes> FORCEINLINE static int RUN(Cls* self, FString name, Tcl_Interp* interpreter) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
@@ -315,8 +341,7 @@ template <typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
 					del.BindUFunction(self, TCHAR_TO_ANSI(*name));
 					if(del.IsBound()) { 
 						auto ret = del.Execute(args...);
-						//del.Execute(args...);
-						UTclComponent::processReturn<ReturnType>(interpreter, ret);
+						PROCESS_RETURN<ReturnType>::USE(interpreter, ret);
 					}
 					return del.IsBound();
 				};
