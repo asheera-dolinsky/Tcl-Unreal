@@ -90,6 +90,37 @@ protected:
 	int define(char* location, UObject* ptr, char* scope = nullptr, int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG);
 
 	int eval(const char*);
+
+	template<typename ReturnType, typename ReturnPropertyType, typename T> int generalizedDeconstructor(FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
+				const int numberOfParams = 2;
+
+				numberOfArgs--;  // proc is counted too
+
+				auto data = static_cast<WrapperContainer<UObject>*>(clientData);
+				if (numberOfArgs != numberOfParams) {
+					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
+					return TCL_ERROR;
+				}
+
+				tuple<UObject*, Tcl_Interp*, FString, T, FString> values;
+				get<0>(values) = data->self;
+				get<1>(values) = interpreter;
+				get<2>(values) = data->name;
+
+				COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<UObject*, Tcl_Interp*, FString, T, FString>, T, FString>(interpreter, arguments, values);
+
+				auto ok = apply(&SPECIALIZED_DECONSTRUCTOR<ReturnType, ReturnPropertyType>::ENGAGE<T>, values);
+				return ok? TCL_OK : TCL_ERROR;
+			};
+			const char* fname = TCHAR_TO_ANSI(*name);
+			auto data = new WrapperContainer<UObject>({ nullptr, name });
+			get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<UObject>);
+			data = nullptr;
+			return TCL_OK;
+		}
+	}
 public:	
 	// Sets default values for this component's properties
 	UTclComponent();
@@ -128,42 +159,21 @@ public:
 		return COMPILE_DELEGATE_ON_PARAMS<ReturnType>::RUN<Cls, ParamTypes...>(self, name, interpreter);
 	}
 
-	template<typename ReturnType, typename ReturnPropertyType, typename T> int generalizedDeconstructor(FString name) {
+	template<typename T, typename P> int addStructDeconstructor(FString name) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
-				const int numberOfParams = 2;
-
-				numberOfArgs--;  // proc is counted too
-
-				auto data = static_cast<WrapperContainer<UObject>*>(clientData);
-				if (numberOfArgs != numberOfParams) {
-					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
-					return TCL_ERROR;
-				}
-
-				tuple<UObject*, Tcl_Interp*, FString, T, FString> values;
-				get<0>(values) = data->self;
-				get<1>(values) = interpreter;
-				get<2>(values) = data->name;
-
-				COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<UObject*, Tcl_Interp*, FString, T, FString>, T, FString>(interpreter, arguments, values);
-
-				auto ok = apply(&SPECIALIZED_DECONSTRUCTOR<ReturnType, ReturnPropertyType>::ENGAGE<T>, values);
-				return ok? TCL_OK : TCL_ERROR;
-			};
-			const char* fname = TCHAR_TO_ANSI(*name);
-			auto data = new WrapperContainer<UObject>({ nullptr, name });
-			get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<UObject>);
-			data = nullptr;
+			generalizedDeconstructor<P, UStructProperty, T>(name);
 			return TCL_OK;
 		}
 	}
-
-	template<typename T> int deconstructor(FString name) {
-		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			generalizedDeconstructor<int32, UNumericProperty, T>(name + "Int32");
-			generalizedDeconstructor<float, UNumericProperty, T>(name + "Float");
-			generalizedDeconstructor<FVector, UStructProperty, T>(name + "FVector");
+	template<typename T, typename P> int addNumericDeconstructor(FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			generalizedDeconstructor<P, UNumericProperty, T>(name);
+			return TCL_OK;
+		}
+	}
+	template<typename T, typename P> int addObjectDeconstructor(FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			generalizedDeconstructor<P, UObjectPropertyBase, T>(name);
 			return TCL_OK;
 		}
 	}
@@ -456,18 +466,45 @@ template <> struct COMPILE_DELEGATE_ON_PARAMS<void> {
 
 */
 
-template<typename ReturnType, typename ReturnPropertyType> struct SPECIALIZED_DECONSTRUCTOR {
+template<typename ReturnType> struct SPECIALIZED_DECONSTRUCTOR<ReturnType, UStructProperty> {
 	template<typename T> FORCEINLINE static bool ENGAGE(UObject* self, Tcl_Interp* interpreter, FString name, T retStruct, FString retName) {
 		TBaseDelegate<ReturnType, T, FString> del;
 		auto wrapper = [](T retStruct, FString name) -> ReturnType {
 			ReturnType Value;
 			for (TFieldIterator<UProperty> PropIt(T::StaticStruct()); PropIt; ++PropIt) {
-				UProperty* Property = *PropIt;
+				auto Property = *PropIt;
 				if(Property->GetNameCPP() == name) {
-					ReturnPropertyType* CastProperty = Cast<ReturnPropertyType>(Property);
+					auto CastProperty = Cast<UStructProperty>(Property);
 					if (CastProperty != nullptr) {
-						void* ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
+						auto ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
 						Value = *(static_cast<ReturnType*>(ValuePtr));
+						break;
+					}
+				}
+			}
+			return Value;
+		};
+		del.BindLambda(wrapper);
+		if(del.IsBound()) { 
+			auto ret = del.Execute(retStruct, retName);
+			PROCESS_RETURN<ReturnType>::USE(interpreter, ret);
+		}
+		return del.IsBound();
+	}
+};
+
+template<typename ReturnType> struct SPECIALIZED_DECONSTRUCTOR<ReturnType, UObjectPropertyBase> {
+	template<typename T> FORCEINLINE static bool ENGAGE(UObject* self, Tcl_Interp* interpreter, FString name, T retStruct, FString retName) {
+		TBaseDelegate<ReturnType, T, FString> del;
+		auto wrapper = [](T retStruct, FString name) -> ReturnType {
+			ReturnType Value = nullptr;
+			for (TFieldIterator<UProperty> PropIt(T::StaticStruct()); PropIt; ++PropIt) {
+				auto Property = *PropIt;
+				if(Property->GetNameCPP() == name) {
+					auto CastProperty = Cast<UObjectPropertyBase>(Property);
+					if (CastProperty != nullptr) {
+						auto ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
+						Value = static_cast<ReturnType>(ValuePtr);
 						break;
 					}
 				}
@@ -488,11 +525,11 @@ template<> struct SPECIALIZED_DECONSTRUCTOR<float, UNumericProperty> {
 		TBaseDelegate<float, T, FString> del;
 		auto wrapper = [](T retStruct, FString name) -> float {
 			for (TFieldIterator<UProperty> PropIt(T::StaticStruct()); PropIt; ++PropIt) {
-				UProperty* Property = *PropIt;
+				auto Property = *PropIt;
 				if(Property->GetNameCPP() == name) {
-					UNumericProperty* NumericProperty = Cast<UNumericProperty>(Property);
+					auto NumericProperty = Cast<UNumericProperty>(Property);
 					if (NumericProperty != nullptr && NumericProperty->IsFloatingPoint()) {
-						void* ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
+						auto ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
 						auto NumericValue = NumericProperty->GetFloatingPointPropertyValue(ValuePtr);
 						return NumericValue;
 					} else { return 0.f; }
@@ -514,11 +551,11 @@ template<> struct SPECIALIZED_DECONSTRUCTOR<int32, UNumericProperty> {
 		TBaseDelegate<int32, T, FString> del;
 		auto wrapper = [](T retStruct, FString name) -> int32 {
 			for (TFieldIterator<UProperty> PropIt(T::StaticStruct()); PropIt; ++PropIt) {
-				UProperty* Property = *PropIt;
+				auto Property = *PropIt;
 				if(Property->GetNameCPP() == name) {
-					UNumericProperty* NumericProperty = Cast<UNumericProperty>(Property);
+					auto NumericProperty = Cast<UNumericProperty>(Property);
 					if (NumericProperty != nullptr && NumericProperty->IsInteger()) {
-						void* ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
+						auto ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
 						auto NumericValue = NumericProperty->GetSignedIntPropertyValue(ValuePtr);
 						return NumericValue;
 					} else { return 0; }
