@@ -62,6 +62,7 @@ struct WrapperContainer {
 };
 
 template <typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS;
+template<typename ReturnType, typename ReturnPropertyType> struct SPECIALIZED_DECONSTRUCTOR;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class PHANTOMGUNSDEMO_API UTclComponent : public UActorComponent {
@@ -127,7 +128,7 @@ public:
 		return COMPILE_DELEGATE_ON_PARAMS<ReturnType>::RUN<Cls, ParamTypes...>(self, name, interpreter);
 	}
 
-	template<typename ReturnType, typename T> int specializeDeconstructor(FString name) {
+	template<typename ReturnType, typename ReturnPropertyType, typename T> int generalizedDeconstructor(FString name) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
 				const int numberOfParams = 2;
@@ -147,47 +148,7 @@ public:
 
 				COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<UObject*, Tcl_Interp*, FString, T, FString>, T, FString>(interpreter, arguments, values);
 
-				auto delegateWrapper = [](UObject* self, Tcl_Interp* interpreter, FString name, T retStruct, FString retName) -> bool {
-					TBaseDelegate<ReturnType, T, FString> del;
-					//typedef std::tuple_element<0, std::tuple<ParamTypes...>>::type T;
-					/*
-					auto wrapper = [](T retStruct, FString name) -> bool {
-						for (TFieldIterator<UProperty> PropIt(T::StaticStruct()); PropIt; ++PropIt) {
-							UProperty* Property = *PropIt;
-							if(Property->GetNameCPP() == name) {
-								if (UBoolProperty* BoolProperty = Cast<UBoolProperty>(Property)) {
-									void* ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
-									auto BoolValue = BoolProperty->GetPropertyValue(ValuePtr);
-									return BoolValue;
-								} else { return false; }
-							}
-						}
-						return false;
-					};
-					*/
-					auto wrapper = [](T retStruct, FString name) -> float {
-						for (TFieldIterator<UProperty> PropIt(T::StaticStruct()); PropIt; ++PropIt) {
-							UProperty* Property = *PropIt;
-							if(Property->GetNameCPP() == name) {
-								UNumericProperty* NumericProperty = Cast<UNumericProperty>(Property);
-								if (NumericProperty != nullptr && NumericProperty->IsFloatingPoint()) {
-									void* ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
-									auto NumericValue = NumericProperty->GetFloatingPointPropertyValue(ValuePtr);
-									return NumericValue;
-								} else { return 0.f; }
-							}
-						}
-						return 0.f;
-					};
-					del.BindLambda(wrapper);
-					if(del.IsBound()) { 
-						auto ret = del.Execute(retStruct, retName);
-						PROCESS_RETURN<ReturnType>::USE(interpreter, ret);
-					}
-					return del.IsBound();
-				};
-				typedef bool(*DelegateWrapperFptr)(UObject* self, Tcl_Interp*, FString name, T, FString);
-				auto ok = apply(static_cast<DelegateWrapperFptr>(delegateWrapper), values);
+				auto ok = apply(&SPECIALIZED_DECONSTRUCTOR<ReturnType, ReturnPropertyType>::ENGAGE<T>, values);
 				return ok? TCL_OK : TCL_ERROR;
 			};
 			const char* fname = TCHAR_TO_ANSI(*name);
@@ -200,7 +161,10 @@ public:
 
 	template<typename T> int deconstructor(FString name) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			return specializeDeconstructor<float, T>(name);
+			generalizedDeconstructor<int32, UNumericProperty, T>(name + "Int32");
+			generalizedDeconstructor<float, UNumericProperty, T>(name + "Float");
+			generalizedDeconstructor<FVector, UStructProperty, T>(name + "FVector");
+			return TCL_OK;
 		}
 	}
 
@@ -481,5 +445,92 @@ template <> struct COMPILE_DELEGATE_ON_PARAMS<void> {
 			data = nullptr;
 			return TCL_OK;
 		}
+	}
+};
+
+/*
+
+				if (UBoolProperty* BoolProperty = Cast<UBoolProperty>(Property)) {
+					BoolValue = BoolProperty->GetPropertyValue(ValuePtr);
+				}
+
+*/
+
+template<typename ReturnType, typename ReturnPropertyType> struct SPECIALIZED_DECONSTRUCTOR {
+	template<typename T> FORCEINLINE static bool ENGAGE(UObject* self, Tcl_Interp* interpreter, FString name, T retStruct, FString retName) {
+		TBaseDelegate<ReturnType, T, FString> del;
+		auto wrapper = [](T retStruct, FString name) -> ReturnType {
+			ReturnType Value;
+			for (TFieldIterator<UProperty> PropIt(T::StaticStruct()); PropIt; ++PropIt) {
+				UProperty* Property = *PropIt;
+				if(Property->GetNameCPP() == name) {
+					ReturnPropertyType* CastProperty = Cast<ReturnPropertyType>(Property);
+					if (CastProperty != nullptr) {
+						void* ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
+						Value = *(static_cast<ReturnType*>(ValuePtr));
+						break;
+					}
+				}
+			}
+			return Value;
+		};
+		del.BindLambda(wrapper);
+		if(del.IsBound()) { 
+			auto ret = del.Execute(retStruct, retName);
+			PROCESS_RETURN<ReturnType>::USE(interpreter, ret);
+		}
+		return del.IsBound();
+	}
+};
+
+template<> struct SPECIALIZED_DECONSTRUCTOR<float, UNumericProperty> {
+	template<typename T> FORCEINLINE static bool ENGAGE(UObject* self, Tcl_Interp* interpreter, FString name, T retStruct, FString retName) {
+		TBaseDelegate<float, T, FString> del;
+		auto wrapper = [](T retStruct, FString name) -> float {
+			for (TFieldIterator<UProperty> PropIt(T::StaticStruct()); PropIt; ++PropIt) {
+				UProperty* Property = *PropIt;
+				if(Property->GetNameCPP() == name) {
+					UNumericProperty* NumericProperty = Cast<UNumericProperty>(Property);
+					if (NumericProperty != nullptr && NumericProperty->IsFloatingPoint()) {
+						void* ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
+						auto NumericValue = NumericProperty->GetFloatingPointPropertyValue(ValuePtr);
+						return NumericValue;
+					} else { return 0.f; }
+				}
+			}
+			return 0.f;
+		};
+		del.BindLambda(wrapper);
+		if(del.IsBound()) { 
+			auto ret = del.Execute(retStruct, retName);
+			PROCESS_RETURN<float>::USE(interpreter, ret);
+		}
+		return del.IsBound();
+	}
+};
+
+template<> struct SPECIALIZED_DECONSTRUCTOR<int32, UNumericProperty> {
+	template<typename T> FORCEINLINE static bool ENGAGE(UObject* self, Tcl_Interp* interpreter, FString name, T retStruct, FString retName) {
+		TBaseDelegate<int32, T, FString> del;
+		auto wrapper = [](T retStruct, FString name) -> int32 {
+			for (TFieldIterator<UProperty> PropIt(T::StaticStruct()); PropIt; ++PropIt) {
+				UProperty* Property = *PropIt;
+				if(Property->GetNameCPP() == name) {
+					UNumericProperty* NumericProperty = Cast<UNumericProperty>(Property);
+					if (NumericProperty != nullptr && NumericProperty->IsInteger()) {
+						void* ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
+						auto NumericValue = NumericProperty->GetSignedIntPropertyValue(ValuePtr);
+						return NumericValue;
+					} else { return 0; }
+				}
+			}
+			return 0;
+		};
+		del.BindLambda(wrapper);
+		if(del.IsBound()) { 
+			auto ret = del.Execute(retStruct, retName);
+			PROCESS_RETURN<int32>::USE(interpreter, ret);
+		}
+		return del.IsBound();
 	}
 };
