@@ -127,6 +127,83 @@ public:
 		return COMPILE_DELEGATE_ON_PARAMS<ReturnType>::RUN<Cls, ParamTypes...>(self, name, interpreter);
 	}
 
+	template<typename Cls, typename ReturnType, typename ...ParamTypes> int specializeDeconstructor(Cls* self, FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
+				const int numberOfParams = sizeof...(ParamTypes);
+
+				numberOfArgs--;  // proc is counted too
+
+				auto data = static_cast<WrapperContainer<Cls>*>(clientData);
+				if (numberOfArgs != numberOfParams) {
+					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
+					return TCL_ERROR;
+				}
+
+				tuple<Cls*, Tcl_Interp*, FString, ParamTypes...> values;
+				get<0>(values) = data->self;
+				get<1>(values) = interpreter;
+				get<2>(values) = data->name;
+
+				COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<Cls*, Tcl_Interp*, FString, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
+
+				auto delegateWrapper = [](Cls* self, Tcl_Interp* interpreter, FString name, ParamTypes... args) -> bool {
+					TBaseDelegate<ReturnType, ParamTypes...> del;
+					typedef std::tuple_element<0, std::tuple<ParamTypes...>>::type T;
+					/*
+					auto wrapper = [](T retStruct, FString name) -> bool {
+						for (TFieldIterator<UProperty> PropIt(T::StaticStruct()); PropIt; ++PropIt) {
+							UProperty* Property = *PropIt;
+							if(Property->GetNameCPP() == name) {
+								if (UBoolProperty* BoolProperty = Cast<UBoolProperty>(Property)) {
+									void* ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
+									auto BoolValue = BoolProperty->GetPropertyValue(ValuePtr);
+									return BoolValue;
+								} else { return false; }
+							}
+						}
+						return false;
+					};
+					*/
+					auto wrapper = [](T retStruct, FString name) -> float {
+						for (TFieldIterator<UProperty> PropIt(T::StaticStruct()); PropIt; ++PropIt) {
+							UProperty* Property = *PropIt;
+							if(Property->GetNameCPP() == name) {
+								UNumericProperty* NumericProperty = Cast<UNumericProperty>(Property);
+								if (NumericProperty != nullptr && NumericProperty->IsFloatingPoint()) {
+									void* ValuePtr = Property->ContainerPtrToValuePtr<void>(&retStruct);
+									auto NumericValue = NumericProperty->GetFloatingPointPropertyValue(ValuePtr);
+									return NumericValue;
+								} else { return 0.f; }
+							}
+						}
+						return 0.f;
+					};
+					del.BindLambda(wrapper);
+					if(del.IsBound()) { 
+						auto ret = del.Execute(args...);
+						PROCESS_RETURN<ReturnType>::USE(interpreter, ret);
+					}
+					return del.IsBound();
+				};
+				typedef bool(*DelegateWrapperFptr)(Cls* self, Tcl_Interp*, FString name, ParamTypes...);
+				auto ok = apply(static_cast<DelegateWrapperFptr>(delegateWrapper), values);
+				return ok? TCL_OK : TCL_ERROR;
+			};
+			const char* fname = TCHAR_TO_ANSI(*name);
+			auto data = new WrapperContainer<Cls>({ self, name });
+			get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<Cls>);
+			data = nullptr;
+			return TCL_OK;
+		}
+	}
+
+	template<typename T> int deconstructor(FString name) {
+		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			return specializeDeconstructor<UObject, float, T, FString>(nullptr, name);
+		}
+	}
+
 	UFUNCTION(BlueprintCallable, Category = Tcl)
 	void Define(FString Location, FString Key, UObject* Object);
 
