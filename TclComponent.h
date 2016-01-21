@@ -127,29 +127,29 @@ public:
 		return COMPILE_DELEGATE_ON_PARAMS<ReturnType>::RUN<Cls, ParamTypes...>(self, name, interpreter);
 	}
 
-	template<typename Cls, typename ReturnType, typename ...ParamTypes> int specializeDeconstructor(Cls* self, FString name) {
+	template<typename ReturnType, typename T> int specializeDeconstructor(FString name) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
-				const int numberOfParams = sizeof...(ParamTypes);
+				const int numberOfParams = 2;
 
 				numberOfArgs--;  // proc is counted too
 
-				auto data = static_cast<WrapperContainer<Cls>*>(clientData);
+				auto data = static_cast<WrapperContainer<UObject>*>(clientData);
 				if (numberOfArgs != numberOfParams) {
 					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
 					return TCL_ERROR;
 				}
 
-				tuple<Cls*, Tcl_Interp*, FString, ParamTypes...> values;
+				tuple<UObject*, Tcl_Interp*, FString, T, FString> values;
 				get<0>(values) = data->self;
 				get<1>(values) = interpreter;
 				get<2>(values) = data->name;
 
-				COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<Cls*, Tcl_Interp*, FString, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
+				COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<UObject*, Tcl_Interp*, FString, T, FString>, T, FString>(interpreter, arguments, values);
 
-				auto delegateWrapper = [](Cls* self, Tcl_Interp* interpreter, FString name, ParamTypes... args) -> bool {
-					TBaseDelegate<ReturnType, ParamTypes...> del;
-					typedef std::tuple_element<0, std::tuple<ParamTypes...>>::type T;
+				auto delegateWrapper = [](UObject* self, Tcl_Interp* interpreter, FString name, T retStruct, FString retName) -> bool {
+					TBaseDelegate<ReturnType, T, FString> del;
+					//typedef std::tuple_element<0, std::tuple<ParamTypes...>>::type T;
 					/*
 					auto wrapper = [](T retStruct, FString name) -> bool {
 						for (TFieldIterator<UProperty> PropIt(T::StaticStruct()); PropIt; ++PropIt) {
@@ -181,18 +181,18 @@ public:
 					};
 					del.BindLambda(wrapper);
 					if(del.IsBound()) { 
-						auto ret = del.Execute(args...);
+						auto ret = del.Execute(retStruct, retName);
 						PROCESS_RETURN<ReturnType>::USE(interpreter, ret);
 					}
 					return del.IsBound();
 				};
-				typedef bool(*DelegateWrapperFptr)(Cls* self, Tcl_Interp*, FString name, ParamTypes...);
+				typedef bool(*DelegateWrapperFptr)(UObject* self, Tcl_Interp*, FString name, T, FString);
 				auto ok = apply(static_cast<DelegateWrapperFptr>(delegateWrapper), values);
 				return ok? TCL_OK : TCL_ERROR;
 			};
 			const char* fname = TCHAR_TO_ANSI(*name);
-			auto data = new WrapperContainer<Cls>({ self, name });
-			get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<Cls>);
+			auto data = new WrapperContainer<UObject>({ nullptr, name });
+			get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<UObject>);
 			data = nullptr;
 			return TCL_OK;
 		}
@@ -200,7 +200,7 @@ public:
 
 	template<typename T> int deconstructor(FString name) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			return specializeDeconstructor<UObject, float, T, FString>(nullptr, name);
+			return specializeDeconstructor<float, T>(name);
 		}
 	}
 
