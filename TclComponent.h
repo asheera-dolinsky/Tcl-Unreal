@@ -85,9 +85,6 @@ protected:
 
 	Tcl_Interp* interpreter = nullptr;
 
-	int define(char* location, ClientData ptr, char* scope = nullptr, int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG);
-	int define(char* location, UObject* ptr, char* scope = nullptr, int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG);
-
 	int eval(const char*);
 
 	template<typename ReturnType, typename ReturnPropertyType, typename T> int generalizedDeconstructor(FString name) {
@@ -184,53 +181,24 @@ public:
 		}
 	}
 
-	UFUNCTION(BlueprintCallable, Category = Tcl)
-	void Define(FString Location, FString Key, UObject* Object);
-
-	UFUNCTION(BlueprintCallable, Category = Tcl, CustomThunk, meta = (CustomStructureParam = Struct))
-	void DefineStruct(FString Location, FString Key, UProperty* Struct);
-	DECLARE_FUNCTION(execDefineStruct) {
-		P_GET_PROPERTY(UStrProperty, Location);
-		P_GET_PROPERTY(UStrProperty, Key);
-		Stack.StepCompiledIn<UStructProperty>(nullptr);
-		void* structPtr = Stack.MostRecentPropertyAddress;
-		P_FINISH;
-		if (Location.IsEmpty()) {
-			UE_LOG(LogClass, Error, TEXT("Location must be filled if Key is empty!"))
-			return;
+	template<typename T> int define(FString Location, T* ptr, FString Key = "", int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) {
+		static const auto tname = typeid(T).name();
+		static const FString tnameconv = tname;
+		static const Tcl_ObjType type = { tname, &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			auto val = _Tcl_NewObj();
+			val->internalRep.otherValuePtr = static_cast<ClientData>(ptr);
+			val->typePtr = &type;
+			if (Key.IsEmpty()) {
+				*val = *(_Tcl_SetVar2Ex(interpreter, TCHAR_TO_ANSI(*Location), nullptr, val, flags));
+				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s for Tcl"), *tnameconv, *Location)
+			} else {
+				*val = *(_Tcl_SetVar2Ex(interpreter, TCHAR_TO_ANSI(*Location), TCHAR_TO_ANSI(*Key), val, flags));
+				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s(%s) for Tcl"), *tnameconv, *Location, *Key)
+			}
+			return TCL_OK;
 		}
-		if (Key.IsEmpty()) {
-			define(TCHAR_TO_ANSI(*Location), static_cast<ClientData>(structPtr));
-		}
-		else {
-			define(TCHAR_TO_ANSI(*Location), static_cast<ClientData>(structPtr), TCHAR_TO_ANSI(*Key));
-		}
-
 	}
-
-	UFUNCTION(BlueprintCallable, Category = Tcl, CustomThunk, meta = (ArrayParm = Objects))
-	void DefineMany(FString Location, FString Key, const TArray<int32>& Objects);
-	DECLARE_FUNCTION(execDefineMany) {
-		P_GET_PROPERTY(UStrProperty, Location);
-		P_GET_PROPERTY(UStrProperty, Key);
-		Stack.StepCompiledIn<UArrayProperty>(nullptr);
-		void* arrPtr = Stack.MostRecentPropertyAddress;
-		P_FINISH;
-		if (Location.IsEmpty()) {
-			UE_LOG(LogClass, Error, TEXT("Location must be filled if Key is empty!"))
-			return;
-		}
-		if (Key.IsEmpty()) {
-			define(TCHAR_TO_ANSI(*Location), static_cast<ClientData>(arrPtr));
-		}
-		else {
-			define(TCHAR_TO_ANSI(*Location), static_cast<ClientData>(arrPtr), TCHAR_TO_ANSI(*Key));
-		}
-
-	}
-
-	UFUNCTION(BlueprintCallable, Category = Tcl)
-	void DefineClass(FString Location, FString Key, UClass* Cls);
 
 	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 Eval(FString Filename, FString Code);
@@ -585,40 +553,40 @@ template<> struct SPECIALIZED_DECONSTRUCTOR<float, UNumericProperty> {
 };
 
 template<typename T> struct DEFINE_IMPL {
-	FORCEINLINE static void DEF(Tcl_Interp* interpreter, char* location, T* ptr, char* scope, int flags) {
+	FORCEINLINE static int DEF(Tcl_Interp* interpreter, FString Location, T* ptr, FString Key, int flags) {
 		static const auto tname = typeid(T).name();
 		static const FString tnameconv = tname;
 		static const Tcl_ObjType type = { tname, &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto val = UTclComponent::get_Tcl_NewObj()();
-			val->internalRep.otherValuePtr = ptr;
+			val->internalRep.otherValuePtr = static_cast<ClientData>(ptr);
 			val->typePtr = &type;
-			*val = *(UTclComponent::get_Tcl_SetVar2Ex()(interpreter, location, scope, val, flags));
-			if (scope == nullptr) {
-				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s for Tcl"), *tnameconv, *loc)
+			if (Key.IsEmpty()) {
+				*val = *(UTclComponent::get_Tcl_SetVar2Ex()(interpreter, TCHAR_TO_ANSI(*Location), nullptr, val, flags));
+				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s for Tcl"), *tnameconv, *Location)
 			} else {
-				FString scp = scope;
-				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s(%s) for Tcl"), *tnameconv, *loc, *scp)
+				*val = *(UTclComponent::get_Tcl_SetVar2Ex()(interpreter, TCHAR_TO_ANSI(*Location), TCHAR_TO_ANSI(*Key), val, flags));
+				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s(%s) for Tcl"), *tnameconv, *Location, *Key)
 			}
 			return TCL_OK;
 		}
 	}
 };
 template<typename T> struct DEFINE_IMPL<T*> {
-	FORCEINLINE static void DEF(Tcl_Interp* interpreter, char* location, T* ptr, char* scope, int flags) {
+	FORCEINLINE static int DEF(Tcl_Interp* interpreter, FString Location, T ptr, FString Key, int flags) {
 		static const auto tname = typeid(T).name();
 		static const FString tnameconv = tname;
 		static const Tcl_ObjType type = { tname, &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto val = UTclComponent::get_Tcl_NewObj()();
-			val->internalRep.otherValuePtr = ptr;
+			val->internalRep.otherValuePtr = static_cast<ClientData>(ptr);
 			val->typePtr = &type;
-			*val = *(UTclComponent::get_Tcl_SetVar2Ex()(interpreter, location, scope, val, flags));
-			if (scope == nullptr) {
-				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s for Tcl"), *tnameconv, *loc)
+			if (Key.IsEmpty()) {
+				*val = *(UTclComponent::get_Tcl_SetVar2Ex()(interpreter, TCHAR_TO_ANSI(*Location), nullptr, val, flags));
+				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s for Tcl"), *tnameconv, *Location)
 			} else {
-				FString scp = scope;
-				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s(%s) for Tcl"), *tnameconv, *loc, *scp)
+				*val = *(UTclComponent::get_Tcl_SetVar2Ex()(interpreter, TCHAR_TO_ANSI(*Location), TCHAR_TO_ANSI(*Key), val, flags));
+				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s(%s) for Tcl"), *tnameconv, *Location, *Key)
 			}
 			return TCL_OK;
 		}

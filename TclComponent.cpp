@@ -108,7 +108,7 @@ void UTclComponent::BeginPlay() {
 				}
 				else {
 					interpreter = _Tcl_CreateInterp();
-					Define("NIL", "", nullptr);
+					//Define("NIL", "", nullptr);
 					UE_LOG(LogClass, Log, TEXT("Bootstrapping Tcl and its functions succeeded!"))
 				}
 			}
@@ -116,7 +116,7 @@ void UTclComponent::BeginPlay() {
 		else { UE_LOG(LogClass, Log, TEXT("Cannot find %s for Tcl!"), _TCL_DLL_FNAME_) }
 	} else {
 		interpreter = _Tcl_CreateInterp();
-		Define("NIL", "", nullptr);
+		//Define("NIL", "", nullptr);
 	}
 	
 }
@@ -146,78 +146,9 @@ _Tcl_GetLongFromObjProto UTclComponent::get_Tcl_GetLongFromObj() { return _Tcl_G
 _Tcl_GetDoubleFromObjProto UTclComponent::get_Tcl_GetDoubleFromObj() { return _Tcl_GetDoubleFromObj; }
 _Tcl_GetStringFromObjProto UTclComponent::get_Tcl_GetStringFromObj() { return _Tcl_GetStringFromObj; }
 
-int UTclComponent::define(char* location, ClientData ptr, char* scope, int flags) {
-	static const Tcl_ObjType type = { "ClientData", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
-	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-	else {
-		auto val = _Tcl_NewObj();
-		val->internalRep.otherValuePtr = ptr;
-		val->typePtr = &type;
-		*val = *(_Tcl_SetVar2Ex(interpreter, location, scope, val, flags));
-		FString loc = location;
-		if (scope == nullptr) {
-			UE_LOG(LogClass, Log, TEXT("Defined in %s for Tcl"), *loc)
-		}
-		else {
-			FString scp = scope;
-			UE_LOG(LogClass, Log, TEXT("Defined in %s(%s) for Tcl"), *loc, *scp)
-		}
-		return TCL_OK;
-	}
-
-}
-int UTclComponent::define(char* location, UObject* ptr, char* scope, int flags) {
-	static const Tcl_ObjType type = { "UObject", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
-	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-	else {
-		auto val = _Tcl_NewObj();
-		val->internalRep.otherValuePtr = static_cast<ClientData>(ptr);
-		val->typePtr = &type;
-		*val = *(_Tcl_SetVar2Ex(interpreter, location, scope, val, flags));
-		FString loc = location;
-		if (scope == nullptr) {
-			UE_LOG(LogClass, Log, TEXT("Defined in %s"), *loc)
-		}
-		else {
-			FString scp = scope;
-			UE_LOG(LogClass, Log, TEXT("Defined in %s(%s)"), *loc, *scp)
-		}
-		return TCL_OK;
-	}
-
-}
-
 int UTclComponent::eval(const char* code) {
 	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 	else { return _Tcl_Eval(interpreter, code); }
-
-}
-
-void UTclComponent::Define(FString Location, FString Key, UObject* Object) {
-	if (Location.IsEmpty()) {
-		UE_LOG(LogClass, Error, TEXT("Location must be filled if Key is empty!"))
-		return;
-	}
-	if (Key.IsEmpty()) {
-		define(TCHAR_TO_ANSI(*Location), Object);
-	}
-	else {
-		define(TCHAR_TO_ANSI(*Location), Object, TCHAR_TO_ANSI(*Key));
-	}
-
-}
-
-void UTclComponent::DefineClass(FString Location, FString Key, UClass* Cls) {
-	if (Location.IsEmpty()) {
-		UE_LOG(LogClass, Error, TEXT("Location must be filled if Key is empty!"))
-		return;
-	}
-	if (Key.IsEmpty()) {
-		define(TCHAR_TO_ANSI(*Location), static_cast<ClientData>(Cls));
-	}
-	else {
-		define(TCHAR_TO_ANSI(*Location), static_cast<ClientData>(Cls), TCHAR_TO_ANSI(*Key));
-	}
 
 }
 
