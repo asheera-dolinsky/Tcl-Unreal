@@ -221,8 +221,9 @@ void UTclComponent::DefineClass(FString Location, FString Key, UClass* Cls) {
 }
 
 int32 UTclComponent::Eval(FString Filename, FString Code) {
+	FString fname = "";
 	if(!Filename.IsEmpty()) {
-		auto fname = FPaths::GameContentDir() + "Scripts/" + Filename;
+		fname = FPaths::GameContentDir() + "Scripts/" + Filename;
 		if(FPaths::FileExists(fname)) {
 			UE_LOG(LogClass, Log, TEXT("Tcl loaded a script file at path: %s"), *fname)
 			FFileHelper::LoadFileToString(Code, *fname);
@@ -231,7 +232,7 @@ int32 UTclComponent::Eval(FString Filename, FString Code) {
 		}
 	}
 	auto status = eval(TCHAR_TO_ANSI(*Code));
-	if (status != TCL_OK) { UE_LOG(LogClass, Log, TEXT("Tcl script error!")) }
+	if (status != TCL_OK) { UE_LOG(LogClass, Log, TEXT("Tcl script error for! filepath: '%s' or code: '%s'!"), *fname, *Code) }
 	return status;
 
 }

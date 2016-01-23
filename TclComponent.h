@@ -34,6 +34,7 @@
 
 #define _TCL_DLL_FNAME_ "tcl86t.dll"
 #define _STRUCT_OFFSET_ 2
+#include <typeinfo>
 #include "Api.hpp"
 #include "TupleUtils.hpp"
 #include "Components/ActorComponent.h"
@@ -317,22 +318,30 @@ template <> struct POPULATE<_STRUCT_OFFSET_> {
 template <typename T>
 struct PROCESS_RETURN {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, T val) {
-		auto cleanUpFunc = [](Tcl_Obj* obj) -> void {
+		
+		FString funcInfo = __FUNCTION__;
+		UE_LOG(LogClass, Log, TEXT("__FUNCTION__ :: %s"), *funcInfo)
+
+		FString argInfo = typeid(T).name();
+		UE_LOG(LogClass, Log, TEXT("__ARG__ :: %s"), *argInfo)
+
+		static const auto cleanUpFunc = [](Tcl_Obj* obj) -> void {
 				auto ptr = static_cast<T*>(obj->internalRep.otherValuePtr);
+				FString tname = obj->typePtr->name;
 				delete ptr;
-				delete obj->typePtr;
-				UE_LOG(LogClass, Log, TEXT("Tcl has garbage collected an object"))
+				UE_LOG(LogClass, Log, TEXT("Tcl has garbage collected an object of type: %s"), *tname)
 		};
+		static const Tcl_ObjType type = { typeid(T).name(), cleanUpFunc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
 		auto obj = UTclComponent::get_Tcl_NewObj()();
 		obj->internalRep.otherValuePtr = static_cast<ClientData>(new T(val));
-		obj->typePtr = new Tcl_ObjType({ "An object constructed within Tcl", cleanUpFunc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc });
+		obj->typePtr = &type;
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template <typename T>
 struct PROCESS_RETURN<T*> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, T* val) {
-		static const Tcl_ObjType type = { "ClientData", &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
+		static const Tcl_ObjType type = { typeid(T).name(), &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
 		auto obj = UTclComponent::get_Tcl_NewObj()();
 		obj->internalRep.otherValuePtr = static_cast<ClientData>(val);
 		obj->typePtr = &type;
