@@ -61,7 +61,6 @@ template <typename T> struct WrapperContainer {
 
 template <typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS;
 template<typename ReturnType, typename ReturnPropertyType> struct SPECIALIZED_DECONSTRUCTOR;
-template<typename T> struct DEFINE_IMPL;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class PHANTOMGUNSDEMO_API UTclComponent : public UActorComponent {
@@ -549,46 +548,5 @@ template<> struct SPECIALIZED_DECONSTRUCTOR<float, UNumericProperty> {
 			PROCESS_RETURN<float>::USE(interpreter, ret);
 		}
 		return del.IsBound();
-	}
-};
-
-template<typename T> struct DEFINE_IMPL {
-	FORCEINLINE static int DEF(Tcl_Interp* interpreter, FString Location, T* ptr, FString Key, int flags) {
-		static const auto tname = typeid(T).name();
-		static const FString tnameconv = tname;
-		static const Tcl_ObjType type = { tname, &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
-		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			auto val = UTclComponent::get_Tcl_NewObj()();
-			val->internalRep.otherValuePtr = static_cast<ClientData>(ptr);
-			val->typePtr = &type;
-			if (Key.IsEmpty()) {
-				*val = *(UTclComponent::get_Tcl_SetVar2Ex()(interpreter, TCHAR_TO_ANSI(*Location), nullptr, val, flags));
-				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s for Tcl"), *tnameconv, *Location)
-			} else {
-				*val = *(UTclComponent::get_Tcl_SetVar2Ex()(interpreter, TCHAR_TO_ANSI(*Location), TCHAR_TO_ANSI(*Key), val, flags));
-				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s(%s) for Tcl"), *tnameconv, *Location, *Key)
-			}
-			return TCL_OK;
-		}
-	}
-};
-template<typename T> struct DEFINE_IMPL<T*> {
-	FORCEINLINE static int DEF(Tcl_Interp* interpreter, FString Location, T ptr, FString Key, int flags) {
-		static const auto tname = typeid(T).name();
-		static const FString tnameconv = tname;
-		static const Tcl_ObjType type = { tname, &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
-		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			auto val = UTclComponent::get_Tcl_NewObj()();
-			val->internalRep.otherValuePtr = static_cast<ClientData>(ptr);
-			val->typePtr = &type;
-			if (Key.IsEmpty()) {
-				*val = *(UTclComponent::get_Tcl_SetVar2Ex()(interpreter, TCHAR_TO_ANSI(*Location), nullptr, val, flags));
-				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s for Tcl"), *tnameconv, *Location)
-			} else {
-				*val = *(UTclComponent::get_Tcl_SetVar2Ex()(interpreter, TCHAR_TO_ANSI(*Location), TCHAR_TO_ANSI(*Key), val, flags));
-				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s(%s) for Tcl"), *tnameconv, *Location, *Key)
-			}
-			return TCL_OK;
-		}
 	}
 };
