@@ -43,27 +43,25 @@
 
 template <int> struct POPULATE;
 
-template <int numberOfParams>
-struct COMPILE_ON_PARAMS {
+template <int numberOfParams> struct COMPILE_ON_PARAMS {
 	template<typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static void EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
 		Tcl_Obj* objects[numberOfParams];
 		for (int i=0; i<numberOfParams; i++) { objects[i] = const_cast<Tcl_Obj*>(arguments[i+1]); }
 		POPULATE<numberOfParams+_STRUCT_OFFSET_>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
 };
-template <>
-struct COMPILE_ON_PARAMS<0> {
+template <> struct COMPILE_ON_PARAMS<0> {
 	template<typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static void EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {}
 };
 
-template <typename T>
-struct WrapperContainer {
+template <typename T> struct WrapperContainer {
 	T* self;
 	FString name;
 };
 
 template <typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS;
 template<typename ReturnType, typename ReturnPropertyType> struct SPECIALIZED_DECONSTRUCTOR;
+template<typename T> struct DEFINE_IMPL;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class PHANTOMGUNSDEMO_API UTclComponent : public UActorComponent {
@@ -135,6 +133,7 @@ public:
 	static bool handleIsMissing();
 	static _Tcl_CreateObjCommandProto get_Tcl_CreateObjCommand();
 	static _Tcl_SetObjResultProto get_Tcl_SetObjResult();
+	static _Tcl_SetVar2ExProto get_Tcl_SetVar2Ex();
 	static _Tcl_NewObjProto get_Tcl_NewObj();
 	static _Tcl_NewBooleanObjProto get_Tcl_NewBooleanObj();
 	static _Tcl_NewLongObjProto get_Tcl_NewLongObj();
@@ -238,8 +237,7 @@ public:
 	
 };
 
-template <typename T>  // UStruct and TArray<T>
-struct IMPL_CONVERT {
+template <typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));
@@ -247,16 +245,14 @@ struct IMPL_CONVERT {
 		return TCL_OK;
 	}
 };
-template <typename T>  // UObject* and TSubjectOf, use bind<...TSubclassOf<T>*...> instead of bind<...TSubclassOf<T>...>
-struct IMPL_CONVERT<T*> {
+template <typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubjectOf, use bind<...TSubclassOf<T>*...> instead of bind<...TSubclassOf<T>...>
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		*val = static_cast<T*>(obj->internalRep.otherValuePtr);
 		return TCL_OK;
 	}
 };
-template <>  // bool
-struct IMPL_CONVERT<bool> {
+template <> struct IMPL_CONVERT<bool> {  // bool
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, bool* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		int in = 0;
@@ -265,8 +261,7 @@ struct IMPL_CONVERT<bool> {
 		return result;
 	}
 };
-template <>  // int32
-struct IMPL_CONVERT<int32> {
+template <> struct IMPL_CONVERT<int32> {  // int32
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int32* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		long in = 0;
@@ -275,8 +270,7 @@ struct IMPL_CONVERT<int32> {
 		return result;
 	}
 };
-template <>  // int64
-struct IMPL_CONVERT<int64> {
+template <> struct IMPL_CONVERT<int64> {  // int64
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int32* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		long in = 0;
@@ -285,8 +279,7 @@ struct IMPL_CONVERT<int64> {
 		return result;
 	}
 };
-template <>  // float
-struct IMPL_CONVERT<float> {
+template <> struct IMPL_CONVERT<float> {  // float
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, float* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		double in = 0.0;
@@ -295,8 +288,7 @@ struct IMPL_CONVERT<float> {
 		return result;
 	}
 };
-template <>  // FString
-struct IMPL_CONVERT<FString> {
+template <> struct IMPL_CONVERT<FString> {  // FString
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, FString* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		auto result = UTclComponent::get_Tcl_GetStringFromObj()(obj, nullptr);
@@ -315,8 +307,7 @@ template <> struct POPULATE<_STRUCT_OFFSET_> {
 	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static void FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {}
 };
 
-template <typename T>
-struct PROCESS_RETURN {
+template <typename T> struct PROCESS_RETURN {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, T val) {
 		
 		FString funcInfo = __FUNCTION__;
@@ -338,8 +329,7 @@ struct PROCESS_RETURN {
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <typename T>
-struct PROCESS_RETURN<T*> {
+template <typename T> struct PROCESS_RETURN<T*> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, T* val) {
 		static const Tcl_ObjType type = { typeid(T).name(), &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
 		auto obj = UTclComponent::get_Tcl_NewObj()();
@@ -348,43 +338,37 @@ struct PROCESS_RETURN<T*> {
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <>
-struct PROCESS_RETURN<bool> {
+template <> struct PROCESS_RETURN<bool> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, bool val) {
 		auto obj = UTclComponent::get_Tcl_NewBooleanObj()(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <>
-struct PROCESS_RETURN<int32> {
+template <> struct PROCESS_RETURN<int32> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, int32 val) {
 		auto obj = UTclComponent::get_Tcl_NewLongObj()(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <>
-struct PROCESS_RETURN<uint32> {
+template <> struct PROCESS_RETURN<uint32> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, uint32 val) {
 		auto obj = UTclComponent::get_Tcl_NewLongObj()(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <>
-struct PROCESS_RETURN<int64> {
+template <> struct PROCESS_RETURN<int64> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, int64 val) {
 		auto obj = UTclComponent::get_Tcl_NewLongObj()(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <>
-struct PROCESS_RETURN<float> {
+template <> struct PROCESS_RETURN<float> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, float val) {
 		auto obj = UTclComponent::get_Tcl_NewDoubleObj()(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <>
-struct PROCESS_RETURN<FString> {
+template <> struct PROCESS_RETURN<FString> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, FString val) {
 		auto obj =  UTclComponent::get_Tcl_NewStringObj()(TCHAR_TO_ANSI(*val), -1);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
@@ -597,5 +581,46 @@ template<> struct SPECIALIZED_DECONSTRUCTOR<float, UNumericProperty> {
 			PROCESS_RETURN<float>::USE(interpreter, ret);
 		}
 		return del.IsBound();
+	}
+};
+
+template<typename T> struct DEFINE_IMPL {
+	FORCEINLINE static void DEF(Tcl_Interp* interpreter, char* location, T* ptr, char* scope, int flags) {
+		static const auto tname = typeid(T).name();
+		static const FString tnameconv = tname;
+		static const Tcl_ObjType type = { tname, &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
+		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			auto val = UTclComponent::get_Tcl_NewObj()();
+			val->internalRep.otherValuePtr = ptr;
+			val->typePtr = &type;
+			*val = *(UTclComponent::get_Tcl_SetVar2Ex()(interpreter, location, scope, val, flags));
+			if (scope == nullptr) {
+				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s for Tcl"), *tnameconv, *loc)
+			} else {
+				FString scp = scope;
+				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s(%s) for Tcl"), *tnameconv, *loc, *scp)
+			}
+			return TCL_OK;
+		}
+	}
+};
+template<typename T> struct DEFINE_IMPL<T*> {
+	FORCEINLINE static void DEF(Tcl_Interp* interpreter, char* location, T* ptr, char* scope, int flags) {
+		static const auto tname = typeid(T).name();
+		static const FString tnameconv = tname;
+		static const Tcl_ObjType type = { tname, &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
+		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			auto val = UTclComponent::get_Tcl_NewObj()();
+			val->internalRep.otherValuePtr = ptr;
+			val->typePtr = &type;
+			*val = *(UTclComponent::get_Tcl_SetVar2Ex()(interpreter, location, scope, val, flags));
+			if (scope == nullptr) {
+				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s for Tcl"), *tnameconv, *loc)
+			} else {
+				FString scp = scope;
+				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s(%s) for Tcl"), *tnameconv, *loc, *scp)
+			}
+			return TCL_OK;
+		}
 	}
 };

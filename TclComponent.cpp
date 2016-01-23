@@ -135,6 +135,7 @@ bool UTclComponent::handleIsMissing() { return handle == nullptr; }
 
 _Tcl_CreateObjCommandProto UTclComponent::get_Tcl_CreateObjCommand() { return _Tcl_CreateObjCommand; }
 _Tcl_SetObjResultProto UTclComponent::get_Tcl_SetObjResult() { return _Tcl_SetObjResult; }
+_Tcl_SetVar2ExProto UTclComponent::get_Tcl_SetVar2Ex() { return _Tcl_SetVar2Ex; }
 _Tcl_NewObjProto UTclComponent::get_Tcl_NewObj() { return _Tcl_NewObj; }
 _Tcl_NewBooleanObjProto UTclComponent::get_Tcl_NewBooleanObj() { return _Tcl_NewBooleanObj; }
 _Tcl_NewLongObjProto UTclComponent::get_Tcl_NewLongObj() { return _Tcl_NewLongObj; };
