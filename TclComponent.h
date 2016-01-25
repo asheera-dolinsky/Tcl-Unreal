@@ -210,6 +210,7 @@ template <typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
 		static const FString desiredType = typeid(T).name();
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		// figure out how to check TArray<T>
 		FString gottenType = obj->typePtr->name;
 		if(gottenType == desiredType) {
 			auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));
@@ -229,7 +230,6 @@ template <typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubclassOf, us
 		static const FString genericType = "UObject";
 		static const FString parentType = typeid(T).name();
 		FString gottenType = obj->typePtr->name;
-		if(obj->internalRep.otherValuePtr == nullptr) { *val = nullptr; return TCL_OK; }
 		if(gottenType == genericType) {
 			auto ptr = static_cast<UObject*>(obj->internalRep.otherValuePtr);
 			if(ptr->IsA(T::StaticClass())) {
@@ -242,7 +242,12 @@ template <typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubclassOf, us
 	}
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		if(obj->internalRep.otherValuePtr == nullptr) {
+			*val = nullptr;
+			return TCL_OK;
+		}
 		auto status = ON_UOBJECT<std::is_base_of<UObject, T>::value>(interpreter, obj, val);
+		// figure out how to check TSubclassOff
 		if(status == _TCL_GOTO_DEFAULT_) {
 			*val = static_cast<T*>(obj->internalRep.otherValuePtr);
 			status = TCL_OK;
