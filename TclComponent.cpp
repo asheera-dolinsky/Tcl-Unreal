@@ -58,7 +58,7 @@ void UTclComponent::BeginPlay() {
 		auto dllPath = FPaths::Combine(*FPaths::GameDir(), TEXT("ThirdParty/"), TEXT(_TCL_DLL_FNAME_));
 		if (FPaths::FileExists(dllPath)) {
 			handle = FPlatformProcess::GetDllHandle(*dllPath);
-			if (handle == nullptr) { UE_LOG(LogClass, Log, TEXT("Tcl bootstrapping failed")) }
+			if (handle == nullptr) { UE_LOG(LogClass, Error, TEXT("Tcl bootstrapping failed")) }
 			else {
 				FString procName = "";
 				procName = "Tcl_CreateInterp";
@@ -104,7 +104,7 @@ void UTclComponent::BeginPlay() {
 					_Tcl_GetDoubleFromObj == nullptr ||
 					_Tcl_GetStringFromObj == nullptr) {
 					handle = nullptr;
-					UE_LOG(LogClass, Log, TEXT("Bootstrapping one or more functions for Tcl failed!"))
+					UE_LOG(LogClass, Error, TEXT("Bootstrapping one or more functions for Tcl failed!"))
 				}
 				else {
 					interpreter = _Tcl_CreateInterp();
@@ -113,7 +113,7 @@ void UTclComponent::BeginPlay() {
 				}
 			}
 		}
-		else { UE_LOG(LogClass, Log, TEXT("Cannot find %s for Tcl!"), _TCL_DLL_FNAME_) }
+		else { UE_LOG(LogClass, Error, TEXT("Cannot find %s for Tcl!"), _TCL_DLL_FNAME_) }
 	} else {
 		interpreter = _Tcl_CreateInterp();
 		define<UObject>("NIL", nullptr);
@@ -164,7 +164,7 @@ int32 UTclComponent::Eval(FString Filename, FString Code) {
 		}
 	}
 	auto status = eval(TCHAR_TO_ANSI(*Code));
-	if (status != TCL_OK) { UE_LOG(LogClass, Log, TEXT("Tcl script error for! filepath: '%s' or code: '%s'!"), *fname, *Code) }
+	if (status != TCL_OK) { UE_LOG(LogClass, Error, TEXT("Tcl script error for! filepath: '%s' or code: '%s'!"), *fname, *Code) }
 	return status;
 
 }

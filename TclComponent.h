@@ -75,9 +75,9 @@ protected:
 	static _Tcl_SetObjResultProto _Tcl_SetObjResult;
 	static _Tcl_NewObjProto _Tcl_NewObj;
 	static _Tcl_NewBooleanObjProto _Tcl_NewBooleanObj;
-  static _Tcl_NewLongObjProto _Tcl_NewLongObj;
-  static _Tcl_NewDoubleObjProto _Tcl_NewDoubleObj;
-  static _Tcl_NewStringObjProto _Tcl_NewStringObj;
+	static _Tcl_NewLongObjProto _Tcl_NewLongObj;
+	static _Tcl_NewDoubleObjProto _Tcl_NewDoubleObj;
+	static _Tcl_NewStringObjProto _Tcl_NewStringObj;
 	static _Tcl_SetVar2ExProto _Tcl_SetVar2Ex;
 	static _Tcl_GetBooleanFromObjProto _Tcl_GetBooleanFromObj;
 	static _Tcl_GetLongFromObjProto _Tcl_GetLongFromObj;
@@ -183,7 +183,7 @@ public:
 	}
 
 	template<typename T> int define(FString Location, T* ptr, FString Key = "", int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) {
-		static const auto tname = typeid(T).name();
+		static const auto tname = std::is_base_of<UObject, T>::value? "UObject" : typeid(T).name();
 		static const FString tnameconv = tname;
 		static const Tcl_ObjType type = { tname, &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
@@ -208,17 +208,46 @@ public:
 
 template <typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
+		static const FString desiredType = typeid(T).name();
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-		auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));
-		*val = deref;
-		return TCL_OK;
+		FString gottenType = obj->typePtr->name;
+		if(gottenType == desiredType) {
+			auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));
+			*val = deref;
+			return TCL_OK;
+		} else {
+			UE_LOG(LogClass, Error, TEXT("Tcl error! Received an object of wrong type: '%s'. It should be of type: '%s'."), *gottenType, *desiredType)
+			return TCL_ERROR;
+		}
 	}
 };
-template <typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubjectOf, use bind<...TSubclassOf<T>*...> instead of bind<...TSubclassOf<T>...>
+template <typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubclassOf, use bind<...TSubclassOf<T>*...> instead of bind<...TSubclassOf<T>...>
+	template<bool> FORCEINLINE static int ON_UOBJECT(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
+		return _TCL_GOTO_DEFAULT_;
+	}
+	template<> FORCEINLINE static int ON_UOBJECT<true>(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
+		static const FString genericType = "UObject";
+		static const FString parentType = typeid(T).name();
+		FString gottenType = obj->typePtr->name;
+		if(obj->internalRep.otherValuePtr == nullptr) { *val = nullptr; return TCL_OK; }
+		if(gottenType == genericType) {
+			auto ptr = static_cast<UObject*>(obj->internalRep.otherValuePtr);
+			if(ptr->IsA(T::StaticClass())) {
+				*val = static_cast<T*>(obj->internalRep.otherValuePtr);
+				return TCL_OK;
+			}
+		}
+		UE_LOG(LogClass, Error, TEXT("Tcl error! Received an object of wrong type: '%s'. It should be of type or subtype: '%s'."), *gottenType, *parentType)
+		return TCL_ERROR;
+	}
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-		*val = static_cast<T*>(obj->internalRep.otherValuePtr);
-		return TCL_OK;
+		auto status = ON_UOBJECT<std::is_base_of<UObject, T>::value>(interpreter, obj, val);
+		if(status == _TCL_GOTO_DEFAULT_) {
+			*val = static_cast<T*>(obj->internalRep.otherValuePtr);
+			status = TCL_OK;
+		}
+		return status;
 	}
 };
 template <> struct IMPL_CONVERT<bool> {  // bool
@@ -269,7 +298,7 @@ template <> struct IMPL_CONVERT<FString> {  // FString
 template <int idx> struct POPULATE {
 	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
 		auto result = IMPL_CONVERT<std::tuple_element<idx, TupleSpecialization>::type>::CALL(interpreter, objects[idx-_STRUCT_OFFSET_-1], &(get<idx>(values)));
-		return (result != TCL_ERROR) && POPULATE<idx-1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
+		return !(result == _TCL_BOOTSTRAP_FAIL_ || result == TCL_ERROR) && POPULATE<idx-1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
 };
 template <> struct POPULATE<_STRUCT_OFFSET_> {
@@ -293,7 +322,7 @@ template <typename T> struct PROCESS_RETURN {
 				delete ptr;
 				UE_LOG(LogClass, Log, TEXT("Tcl has garbage collected an object of type: %s"), *tname)
 		};
-		static const Tcl_ObjType type = { typeid(T).name(), cleanUpFunc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
+		static const Tcl_ObjType type = { std::is_base_of<UObject, T>::value? "UObject" : typeid(T).name(), cleanUpFunc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
 		auto obj = UTclComponent::get_Tcl_NewObj()();
 		obj->internalRep.otherValuePtr = static_cast<ClientData>(new T(val));
 		obj->typePtr = &type;
@@ -302,7 +331,7 @@ template <typename T> struct PROCESS_RETURN {
 };
 template <typename T> struct PROCESS_RETURN<T*> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, T* val) {
-		static const Tcl_ObjType type = { typeid(T).name(), &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
+		static const Tcl_ObjType type = { std::is_base_of<UObject, T>::value? "UObject" : typeid(T).name(), &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
 		auto obj = UTclComponent::get_Tcl_NewObj()();
 		obj->internalRep.otherValuePtr = static_cast<ClientData>(val);
 		obj->typePtr = &type;

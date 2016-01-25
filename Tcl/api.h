@@ -41,3 +41,4 @@ typedef int(*_Tcl_GetDoubleFromObjProto)(Tcl_Interp*, Tcl_Obj*, double*);
 typedef char*(*_Tcl_GetStringFromObjProto)(Tcl_Obj*, int*);
 
 #define _TCL_BOOTSTRAP_FAIL_ -1
+#define _TCL_GOTO_DEFAULT_ -2
