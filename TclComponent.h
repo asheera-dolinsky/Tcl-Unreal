@@ -56,6 +56,12 @@ template <> struct COMPILE_ON_PARAMS<0> {
 	}
 };
 
+template<typename>
+struct IS_TSUBCLASSOF : std::false_type {};
+
+template<typename T>
+struct IS_TSUBCLASSOF<TSubclassOf<T>> : std::true_type {};
+
 template <typename T> struct WrapperContainer {
 	T* self;
 	FString name;
@@ -187,6 +193,8 @@ public:
 		static const FString tnameconv = tname;
 		static const Tcl_ObjType type = { tname, &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			if(IS_TSUBCLASSOF<T>::value) { UE_LOG(LogClass, Log, TEXT("Is subclassof %s"), *tnameconv) }
+
 			auto val = _Tcl_NewObj();
 			val->internalRep.otherValuePtr = static_cast<ClientData>(ptr);
 			val->typePtr = &type;
@@ -210,7 +218,7 @@ template <typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
 		static const FString desiredType = typeid(T).name();
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-		// figure out how to check TArray<T>
+		// use this to check for array type!
 		FString gottenType = obj->typePtr->name;
 		if(gottenType == desiredType) {
 			auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));
@@ -224,7 +232,7 @@ template <typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
 };
 template <typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubclassOf, use bind<...TSubclassOf<T>*...> instead of bind<...TSubclassOf<T>...>
 	template<bool> FORCEINLINE static int ON_UOBJECT(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
-		return _TCL_GOTO_DEFAULT_;
+		return _TCL_SKIP_;
 	}
 	template<> FORCEINLINE static int ON_UOBJECT<true>(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
 		static const FString genericType = "UObject";
@@ -247,8 +255,10 @@ template <typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubclassOf, us
 			return TCL_OK;
 		}
 		auto status = ON_UOBJECT<std::is_base_of<UObject, T>::value>(interpreter, obj, val);
-		// figure out how to check TSubclassOff
-		if(status == _TCL_GOTO_DEFAULT_) {
+		if(status == _TCL_SKIP_) { return status; }
+
+		// figure out how to check TSubclassOf
+		if(status == _TCL_SKIP_) {
 			*val = static_cast<T*>(obj->internalRep.otherValuePtr);
 			status = TCL_OK;
 		}
