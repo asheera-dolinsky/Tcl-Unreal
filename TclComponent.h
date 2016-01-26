@@ -225,19 +225,20 @@ template <typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
 		static const FString genericType = "TArray of UObjects";
 		if(gottenType == genericType) {
 			auto ptr = static_cast<TArray<UObject*>*>(obj->internalRep.otherValuePtr);
-			if(ptr->Num() <= 0) {  // assuming the array doesn't get accessed for members if empty, otherwise most probably a crash.
+			if(ptr->Num() <= 0) {  // assuming the array doesn't access the contained if empty, otherwise most probably a crash.
 				auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));  // here be dragons!
 				*val = deref;
 				return TCL_OK;
 			}
 			typedef remove_pointer<P>::type O;
-			if((*ptr)[0]->IsA(O::StaticClass())) {
+			auto repr = (*ptr)[0];
+			if(repr->IsA(O::StaticClass())) {  // a bit of a hack
 				auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));
 				*val = deref;
 				return TCL_OK;
-			}
-		}
-		UE_LOG(LogClass, Error, TEXT("Tcl error! Received an object of wrong type: '%s'. It should be of type or subtype: '%s'."), *gottenType, *parentType)
+			} else { gottenType = repr->GetClass()->GetDescription(); }
+		} 
+		UE_LOG(LogClass, Error, TEXT("Tcl error! Received a TArray containing wrong type of UObjects: '%s'. The TArray should be of the type or subtype: '%s'."), *gottenType, *parentType)
 		return TCL_ERROR;
 	}
 	template<bool> FORCEINLINE static int COND(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val, FString parentType, FString gottenType) {
