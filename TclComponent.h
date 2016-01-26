@@ -231,12 +231,11 @@ template <typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
 	}
 };
 template <typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubclassOf, use bind<...TSubclassOf<T>*...> instead of bind<...TSubclassOf<T>...>
-	template<bool> FORCEINLINE static int ON_UOBJECT(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
+	template<bool> FORCEINLINE static int ON_UOBJECT(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val, FString parentType) {
 		return _TCL_SKIP_;
 	}
-	template<> FORCEINLINE static int ON_UOBJECT<true>(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
+	template<> FORCEINLINE static int ON_UOBJECT<true>(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val, FString parentType) {
 		static const FString genericType = "UObject";
-		static const FString parentType = typeid(T).name();
 		FString gottenType = obj->typePtr->name;
 		if(gottenType == genericType) {
 			auto ptr = static_cast<UObject*>(obj->internalRep.otherValuePtr);
@@ -249,20 +248,21 @@ template <typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubclassOf, us
 		return TCL_ERROR;
 	}
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
+		static const FString desiredType = typeid(T).name();
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		if(obj->internalRep.otherValuePtr == nullptr) {
 			*val = nullptr;
 			return TCL_OK;
 		}
-		auto status = ON_UOBJECT<std::is_base_of<UObject, T>::value>(interpreter, obj, val);
-		if(status == _TCL_SKIP_) { return status; }
-
-		// figure out how to check TSubclassOf
-		if(status == _TCL_SKIP_) {
+		auto status = ON_UOBJECT<std::is_base_of<UObject, T>::value>(interpreter, obj, val, desiredType);
+		if(status != _TCL_SKIP_) { return status; }
+		FString gottenType = obj->typePtr->name;
+		if(gottenType == desiredType) {  // TSubclassOf<T> basically always has the same class, so it's okay to leave it to the base case
 			*val = static_cast<T*>(obj->internalRep.otherValuePtr);
-			status = TCL_OK;
+			return TCL_OK;
 		}
-		return status;
+		UE_LOG(LogClass, Error, TEXT("Tcl error! Received an object of wrong type: '%s'. It should be of type or subtype: '%s'."), *gottenType, *desiredType)
+		return TCL_ERROR;
 	}
 };
 template <> struct IMPL_CONVERT<bool> {  // bool
