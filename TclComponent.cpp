@@ -125,7 +125,12 @@ void UTclComponent::BeginPlay() {
 	
 }
 
-void UTclComponent::BeginDestroy() { _Tcl_DeleteInterp(interpreter); }
+void UTclComponent::BeginDestroy() {
+	Super::BeginDestroy();
+	if(interpreter != nullptr) {
+		_Tcl_DeleteInterp(interpreter);
+	}
+}
 
 void UTclComponent::Tcl_FreeInternalRepProc(Tcl_Obj* obj) { }
 void UTclComponent::Tcl_DupInternalRepProc(Tcl_Obj* srcPtr, Tcl_Obj* dupPtr) { }
