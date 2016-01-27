@@ -161,13 +161,15 @@ public:
 	}
 
 	template<typename ...ParamTypes> int pack(ParamTypes... args) {
-		TArray<Tcl_Obj*> collector;
-		collect<ParamTypes...>(&collector, args...);
-		const auto len = sizeof...(ParamTypes);
-		const Tcl_Obj* arguments[len];
-		for(int i = 0; i < len; i++) { arguments[i] = collector[i]; }
-		_Tcl_SetObjResult(interpreter, _Tcl_NewListObj(len, static_cast<ClientData>(arguments)));
-		return TCL_OK;
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			TArray<Tcl_Obj*> collector;
+			collect<ParamTypes...>(&collector, args...);
+			const auto len = sizeof...(ParamTypes);
+			const Tcl_Obj* arguments[len];
+			for(int i = 0; i < len; i++) { arguments[i] = collector[i]; }
+			_Tcl_SetObjResult(interpreter, _Tcl_NewListObj(len, static_cast<ClientData>(arguments)));
+			return TCL_OK;
+		}
 	}
 
 	template<typename T, typename P> int addStructDeconstructor(FString name) {
