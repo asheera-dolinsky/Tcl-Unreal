@@ -171,7 +171,7 @@ public:
 		return COMPILE_DELEGATE_ON_PARAMS<ReturnType>::RUN<Cls, ParamTypes...>(self, name, interpreter);
 	}
 
-	template<typename ...ParamTypes> int returnList(ParamTypes... args) {
+	template<typename ...ParamTypes> int pack(ParamTypes... args) {
 		TArray<Tcl_Obj*> collector;
 		collect<ParamTypes...>(&collector, args...);
 		const auto len = sizeof...(ParamTypes);
