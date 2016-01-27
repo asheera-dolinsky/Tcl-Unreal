@@ -24,10 +24,9 @@
 
 /*
 	TODO:
-		1) handle error codes in IMPL_CONVERT for more safety
-		2) devise a way to check for nullpointers before going into UFUNCTIONs
-		3) make the code as safe as humanly possible
-		4) illiminate memory leaks, there is probably a bunch, the first being the interpreter itself once the owner is destroyed
+		1) illiminate memory leaks, there is probably a bunch, the first being the interpreter itself once the owner is destroyed
+
+		Use in production and pinpoint what's missing.
 */
 
 #pragma once
@@ -41,35 +40,34 @@
 #include "TclComponent.generated.h"
 
 
-template <int> struct POPULATE;
+template<int> struct POPULATE;
 
-template <int numberOfParams> struct COMPILE_ON_PARAMS {
+template<int numberOfParams> struct COMPILE_ON_PARAMS {
 	template<typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
 		Tcl_Obj* objects[numberOfParams];
 		for (int i=0; i<numberOfParams; i++) { objects[i] = const_cast<Tcl_Obj*>(arguments[i+1]); }
 		return POPULATE<numberOfParams+_STRUCT_OFFSET_>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
 };
-template <> struct COMPILE_ON_PARAMS<0> {
+template<> struct COMPILE_ON_PARAMS<0> {
 	template<typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
 		return true;
 	}
 };
 
-template<typename>
-struct IS_TARRAY : std::false_type { static const bool OF_UOBJECTS = false; };
-template<typename T>
-struct IS_TARRAY<TArray<T>> : std::true_type {
+template<typename> struct IS_TARRAY : std::false_type { static const bool OF_UOBJECTS = false; };
+template<typename T> struct IS_TARRAY<TArray<T>> : std::true_type {
 	static const bool OF_UOBJECTS = std::is_base_of<UObject, remove_pointer<T>::type>::value;
 };
 
-template <typename T> struct WrapperContainer {
+template<typename T> struct WrapperContainer {
 	T* self;
 	FString name;
 };
 
-template <typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS;
+template<typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS;
 template<typename ReturnType, typename ReturnPropertyType> struct SPECIALIZED_DECONSTRUCTOR;
+template<typename T> struct NEW_OBJ;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class PHANTOMGUNSDEMO_API UTclComponent : public UActorComponent {
@@ -85,6 +83,7 @@ protected:
 	static _Tcl_NewLongObjProto _Tcl_NewLongObj;
 	static _Tcl_NewDoubleObjProto _Tcl_NewDoubleObj;
 	static _Tcl_NewStringObjProto _Tcl_NewStringObj;
+	static _Tcl_NewListObjProto _Tcl_NewListObj;
 	static _Tcl_SetVar2ExProto _Tcl_SetVar2Ex;
 	static _Tcl_GetBooleanFromObjProto _Tcl_GetBooleanFromObj;
 	static _Tcl_GetLongFromObjProto _Tcl_GetLongFromObj;
@@ -94,6 +93,14 @@ protected:
 	Tcl_Interp* interpreter = nullptr;
 
 	int eval(const char*);
+
+	template<typename Last> void collect(TArray<Tcl_Obj*>* collector, Last head) {
+		collector->Add(NEW_OBJ<Last>::MAKE(interpreter, head));
+	}
+	template<typename First, typename... Rest> void collect(TArray<Tcl_Obj*>* collector, First head, Rest... tail) {
+		collector->Add(NEW_OBJ<First>::MAKE(interpreter, head));
+		collect<Rest...>(collector, tail...);
+	}
 
 	template<typename ReturnType, typename ReturnPropertyType, typename T> int generalizedDeconstructor(FString name) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
@@ -154,7 +161,7 @@ public:
 	static void Tcl_UpdateStringProc(Tcl_Obj *obj);
 	static int Tcl_SetFromAnyProc(Tcl_Interp*, Tcl_Obj*);
 
-	template <typename Cls> static void freeWrapperContainer(ClientData clientData) {
+	template<typename Cls> static void freeWrapperContainer(ClientData clientData) {
 		auto data = static_cast<WrapperContainer<Cls>*>(clientData);
 		delete data;
 		data = nullptr; 
@@ -162,6 +169,16 @@ public:
 	
 	template<typename Cls, typename ReturnType, typename ...ParamTypes> int bind(Cls* self, FString name) {
 		return COMPILE_DELEGATE_ON_PARAMS<ReturnType>::RUN<Cls, ParamTypes...>(self, name, interpreter);
+	}
+
+	template<typename ...ParamTypes> int returnList(ParamTypes... args) {
+		TArray<Tcl_Obj*> collector;
+		collect<ParamTypes...>(&collector, args...);
+		const auto len = sizeof...(ParamTypes);
+		const Tcl_Obj* arguments[len];
+		for(int i = 0; i < len; i++) { arguments[i] = collector[i]; }
+		_Tcl_SetObjResult(interpreter, _Tcl_NewListObj(len, static_cast<ClientData>(arguments)));
+		return TCL_OK;
 	}
 
 	template<typename T, typename P> int addStructDeconstructor(FString name) {
@@ -217,7 +234,7 @@ public:
 	
 };
 
-template <typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
+template<typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
 	template<typename> FORCEINLINE static int ON_TARRAY_OF_UOBJECTS(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val, FString parentType, FString gottenType) {
 		return _TCL_SKIP_;
 	}
@@ -263,7 +280,7 @@ template <typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
 		}
 	}
 };
-template <typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubclassOf, use bind<...TSubclassOf<T>*...> instead of bind<...TSubclassOf<T>...>
+template<typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubclassOf, use bind<...TSubclassOf<T>*...> instead of bind<...TSubclassOf<T>...>
 	template<bool> FORCEINLINE static int ON_UOBJECT(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val, FString parentType, FString gottenType) {
 		return _TCL_SKIP_;
 	}
@@ -297,7 +314,7 @@ template <typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubclassOf, us
 		return TCL_ERROR;
 	}
 };
-template <> struct IMPL_CONVERT<bool> {  // bool
+template<> struct IMPL_CONVERT<bool> {  // bool
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, bool* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		int in = 0;
@@ -306,7 +323,7 @@ template <> struct IMPL_CONVERT<bool> {  // bool
 		return result;
 	}
 };
-template <> struct IMPL_CONVERT<int32> {  // int32
+template<> struct IMPL_CONVERT<int32> {  // int32
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int32* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		long in = 0;
@@ -315,7 +332,7 @@ template <> struct IMPL_CONVERT<int32> {  // int32
 		return result;
 	}
 };
-template <> struct IMPL_CONVERT<int64> {  // int64
+template<> struct IMPL_CONVERT<int64> {  // int64
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int32* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		long in = 0;
@@ -324,7 +341,7 @@ template <> struct IMPL_CONVERT<int64> {  // int64
 		return result;
 	}
 };
-template <> struct IMPL_CONVERT<float> {  // float
+template<> struct IMPL_CONVERT<float> {  // float
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, float* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		double in = 0.0;
@@ -333,7 +350,7 @@ template <> struct IMPL_CONVERT<float> {  // float
 		return result;
 	}
 };
-template <> struct IMPL_CONVERT<FString> {  // FString
+template<> struct IMPL_CONVERT<FString> {  // FString
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, FString* val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		auto result = UTclComponent::get_Tcl_GetStringFromObj()(obj, nullptr);
@@ -342,27 +359,20 @@ template <> struct IMPL_CONVERT<FString> {  // FString
 	}
 };
 
-template <int idx> struct POPULATE {
+template<int idx> struct POPULATE {
 	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
 		auto result = IMPL_CONVERT<std::tuple_element<idx, TupleSpecialization>::type>::CALL(interpreter, objects[idx-_STRUCT_OFFSET_-1], &(get<idx>(values)));
 		return !(result == _TCL_BOOTSTRAP_FAIL_ || result == TCL_ERROR) && POPULATE<idx-1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
 };
-template <> struct POPULATE<_STRUCT_OFFSET_> {
+template<> struct POPULATE<_STRUCT_OFFSET_> {
 	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
 		return true;
 	}
 };
 
-template <typename T> struct PROCESS_RETURN {
-	FORCEINLINE static void USE(Tcl_Interp* interpreter, T val) {
-		
-		FString funcInfo = __FUNCTION__;
-		UE_LOG(LogClass, Log, TEXT("__FUNCTION__ :: %s"), *funcInfo)
-
-		FString argInfo = typeid(T).name();
-		UE_LOG(LogClass, Log, TEXT("__ARG__ :: %s"), *argInfo)
-
+template<typename T> struct NEW_OBJ {
+	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, T val) {
 		static const auto cleanUpFunc = [](Tcl_Obj* obj) -> void {
 				auto ptr = static_cast<T*>(obj->internalRep.otherValuePtr);
 				FString tname = obj->typePtr->name;
@@ -373,56 +383,99 @@ template <typename T> struct PROCESS_RETURN {
 		auto obj = UTclComponent::get_Tcl_NewObj()();
 		obj->internalRep.otherValuePtr = static_cast<ClientData>(new T(val));
 		obj->typePtr = &type;
-		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+		return obj;
 	}
 };
-template <typename T> struct PROCESS_RETURN<T*> {
-	FORCEINLINE static void USE(Tcl_Interp* interpreter, T* val) {
+template<typename T> struct NEW_OBJ<T*> {
+	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, T* val) {
 		static const Tcl_ObjType type = { std::is_base_of<UObject, T>::value? "UObject" : typeid(T).name(), &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
 		auto obj = UTclComponent::get_Tcl_NewObj()();
 		obj->internalRep.otherValuePtr = static_cast<ClientData>(val);
 		obj->typePtr = &type;
+		return obj;
+	}
+};
+template<> struct NEW_OBJ<bool> {
+	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, bool val) {
+		return UTclComponent::get_Tcl_NewBooleanObj()(val);
+	}
+};
+template<> struct NEW_OBJ<int32> {
+	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, int32 val) {
+		return UTclComponent::get_Tcl_NewLongObj()(val);
+	}
+};
+template<> struct NEW_OBJ<uint32> {
+	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, uint32 val) {
+		return UTclComponent::get_Tcl_NewLongObj()(val);
+	}
+};
+template<> struct NEW_OBJ<int64> {
+	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, int64 val) {
+		return UTclComponent::get_Tcl_NewLongObj()(val);
+	}
+};
+template<> struct NEW_OBJ<float> {
+	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, float val) {
+		return UTclComponent::get_Tcl_NewDoubleObj()(val);
+	}
+};
+template<> struct NEW_OBJ<FString> {
+	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, FString val) {
+		return UTclComponent::get_Tcl_NewStringObj()(TCHAR_TO_ANSI(*val), -1);
+	}
+};
+
+template<typename T> struct PROCESS_RETURN {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, T val) {
+		auto obj = NEW_OBJ<T>::MAKE(interpreter, val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <> struct PROCESS_RETURN<bool> {
+template<typename T> struct PROCESS_RETURN<T*> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, T* val) {
+		auto obj = NEW_OBJ<T*>::MAKE(interpreter, val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template<> struct PROCESS_RETURN<bool> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, bool val) {
-		auto obj = UTclComponent::get_Tcl_NewBooleanObj()(val);
+		auto obj = NEW_OBJ<bool>::MAKE(interpreter, val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <> struct PROCESS_RETURN<int32> {
+template<> struct PROCESS_RETURN<int32> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, int32 val) {
-		auto obj = UTclComponent::get_Tcl_NewLongObj()(val);
+		auto obj = NEW_OBJ<int32>::MAKE(interpreter, val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <> struct PROCESS_RETURN<uint32> {
+template<> struct PROCESS_RETURN<uint32> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, uint32 val) {
-		auto obj = UTclComponent::get_Tcl_NewLongObj()(val);
+		auto obj = NEW_OBJ<uint32>::MAKE(interpreter, val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <> struct PROCESS_RETURN<int64> {
+template<> struct PROCESS_RETURN<int64> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, int64 val) {
-		auto obj = UTclComponent::get_Tcl_NewLongObj()(val);
+		auto obj = NEW_OBJ<int64>::MAKE(interpreter, val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <> struct PROCESS_RETURN<float> {
+template<> struct PROCESS_RETURN<float> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, float val) {
-		auto obj = UTclComponent::get_Tcl_NewDoubleObj()(val);
+		auto obj = NEW_OBJ<float>::MAKE(interpreter, val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
-template <> struct PROCESS_RETURN<FString> {
+template<> struct PROCESS_RETURN<FString> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, FString val) {
-		auto obj =  UTclComponent::get_Tcl_NewStringObj()(TCHAR_TO_ANSI(*val), -1);
+		auto obj = NEW_OBJ<FString>::MAKE(interpreter, val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 
-template <typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
+template<typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
 	template<typename Cls, typename ...ParamTypes> FORCEINLINE static int RUN(Cls* self, FString name, Tcl_Interp* interpreter) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
@@ -464,7 +517,7 @@ template <typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
 		}
 	}
 };
-template <> struct COMPILE_DELEGATE_ON_PARAMS<void> {
+template<> struct COMPILE_DELEGATE_ON_PARAMS<void> {
 	template<typename Cls, typename ...ParamTypes> FORCEINLINE static int RUN(Cls* self, FString name, Tcl_Interp* interpreter) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {

@@ -36,6 +36,7 @@ _Tcl_NewBooleanObjProto UTclComponent::_Tcl_NewBooleanObj = nullptr;
 _Tcl_NewLongObjProto UTclComponent::_Tcl_NewLongObj = nullptr;
 _Tcl_NewDoubleObjProto UTclComponent::_Tcl_NewDoubleObj = nullptr;
 _Tcl_NewStringObjProto UTclComponent::_Tcl_NewStringObj = nullptr;
+_Tcl_NewListObjProto UTclComponent::_Tcl_NewListObj = nullptr;
 _Tcl_SetVar2ExProto UTclComponent::_Tcl_SetVar2Ex = nullptr;
 _Tcl_GetBooleanFromObjProto UTclComponent::_Tcl_GetBooleanFromObj = nullptr;
 _Tcl_GetLongFromObjProto UTclComponent::_Tcl_GetLongFromObj = nullptr;
@@ -79,6 +80,8 @@ void UTclComponent::BeginPlay() {
 				_Tcl_NewDoubleObj = static_cast<_Tcl_NewDoubleObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewStringObj";
 				_Tcl_NewStringObj = static_cast<_Tcl_NewStringObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
+				procName = "Tcl_NewListObj";
+				_Tcl_NewListObj = static_cast<_Tcl_NewListObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_SetVar2Ex";
 				_Tcl_SetVar2Ex = static_cast<_Tcl_SetVar2ExProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_GetBooleanFromObj";
@@ -98,6 +101,7 @@ void UTclComponent::BeginPlay() {
 					_Tcl_NewLongObj == nullptr ||
 					_Tcl_NewDoubleObj == nullptr ||
 					_Tcl_NewStringObj == nullptr ||
+					_Tcl_NewListObj == nullptr ||
 					_Tcl_SetVar2Ex == nullptr ||
 					_Tcl_GetBooleanFromObj == nullptr ||
 					_Tcl_GetLongFromObj == nullptr ||
