@@ -26,6 +26,7 @@
 #include "tcl.h"
 
 typedef Tcl_Interp*(*_Tcl_CreateInterpProto)(void);
+typedef void(*_Tcl_DeleteInterpProto)(Tcl_Interp*);
 typedef int(*_Tcl_EvalProto)(Tcl_Interp*, const char*);
 typedef void(*_Tcl_CreateObjCommandProto)(Tcl_Interp*, const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
 typedef void(*_Tcl_SetObjResultProto)(Tcl_Interp*, Tcl_Obj*);

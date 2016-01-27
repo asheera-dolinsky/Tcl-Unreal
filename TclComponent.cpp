@@ -28,6 +28,7 @@
 
 void* UTclComponent::handle = nullptr;
 _Tcl_CreateInterpProto UTclComponent::_Tcl_CreateInterp = nullptr;
+_Tcl_DeleteInterpProto UTclComponent::_Tcl_DeleteInterp = nullptr;
 _Tcl_EvalProto UTclComponent::_Tcl_Eval = nullptr;
 _Tcl_CreateObjCommandProto UTclComponent::_Tcl_CreateObjCommand = nullptr;
 _Tcl_SetObjResultProto UTclComponent::_Tcl_SetObjResult;
@@ -43,16 +44,12 @@ _Tcl_GetLongFromObjProto UTclComponent::_Tcl_GetLongFromObj = nullptr;
 _Tcl_GetDoubleFromObjProto UTclComponent::_Tcl_GetDoubleFromObj = nullptr;
 _Tcl_GetStringFromObjProto UTclComponent::_Tcl_GetStringFromObj = nullptr;
 
-// Sets default values for this component's properties
 UTclComponent::UTclComponent(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer) {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
 	bWantsBeginPlay = true;
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 
 }
 
-// Called when the game starts
 void UTclComponent::BeginPlay() {
 	Super::BeginPlay();
 	if (handle == nullptr) {
@@ -64,6 +61,8 @@ void UTclComponent::BeginPlay() {
 				FString procName = "";
 				procName = "Tcl_CreateInterp";
 				_Tcl_CreateInterp = static_cast<_Tcl_CreateInterpProto>(FPlatformProcess::GetDllExport(handle, *procName));
+				procName = "Tcl_DeleteInterp";
+				_Tcl_DeleteInterp = static_cast<_Tcl_DeleteInterpProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_Eval";
 				_Tcl_Eval = static_cast<_Tcl_EvalProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_CreateObjCommand";
@@ -93,6 +92,7 @@ void UTclComponent::BeginPlay() {
 				procName = "Tcl_GetStringFromObj";
 				_Tcl_GetStringFromObj = static_cast<_Tcl_GetStringFromObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				if (_Tcl_CreateInterp == nullptr ||
+					_Tcl_DeleteInterp == nullptr ||
 					_Tcl_Eval == nullptr ||
 					_Tcl_CreateObjCommand == nullptr ||
 					_Tcl_SetObjResult == nullptr ||
@@ -125,10 +125,7 @@ void UTclComponent::BeginPlay() {
 	
 }
 
-void UTclComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-}
+void UTclComponent::BeginDestroy() { _Tcl_DeleteInterp(interpreter); }
 
 void UTclComponent::Tcl_FreeInternalRepProc(Tcl_Obj* obj) { }
 void UTclComponent::Tcl_DupInternalRepProc(Tcl_Obj* srcPtr, Tcl_Obj* dupPtr) { }

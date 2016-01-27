@@ -23,10 +23,7 @@
 */
 
 /*
-	TODO:
-		1) illiminate memory leaks, there is probably a bunch, the first being the interpreter itself once the owner is destroyed
-
-		Use in production and pinpoint what's missing.
+	TODO: Use in production and pinpoint what's missing, also profile for potential memory leaks.
 */
 
 #pragma once
@@ -75,6 +72,7 @@ class PHANTOMGUNSDEMO_API UTclComponent : public UActorComponent {
 protected:
 	static void* handle;
 	static _Tcl_CreateInterpProto _Tcl_CreateInterp;
+	static _Tcl_DeleteInterpProto _Tcl_DeleteInterp;
 	static _Tcl_EvalProto _Tcl_Eval;
 	static _Tcl_CreateObjCommandProto _Tcl_CreateObjCommand;
 	static _Tcl_SetObjResultProto _Tcl_SetObjResult;
@@ -105,21 +103,17 @@ protected:
 	template<typename ReturnType, typename ReturnPropertyType, typename T> int generalizedDeconstructor(FString name) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
-				const int numberOfParams = 2;
-
+				static const int numberOfParams = 2;
 				numberOfArgs--;  // proc is counted too
-
 				auto data = static_cast<WrapperContainer<UObject>*>(clientData);
 				if (numberOfArgs != numberOfParams) {
 					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
 					return TCL_ERROR;
 				}
-
 				tuple<UObject*, Tcl_Interp*, FString, T, FString> values;
 				get<0>(values) = data->self;
 				get<1>(values) = interpreter;
 				get<2>(values) = data->name;
-
 				auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<UObject*, Tcl_Interp*, FString, T, FString>, T, FString>(interpreter, arguments, values);
 				if(!ok) { return TCL_ERROR; }
 				ok = apply(&SPECIALIZED_DECONSTRUCTOR<ReturnType, ReturnPropertyType>::ENGAGE<T>, values);
@@ -133,14 +127,9 @@ protected:
 		}
 	}
 public:	
-	// Sets default values for this component's properties
 	UTclComponent();
-
-	// Called when the game starts
 	virtual void BeginPlay() override;
-	
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void BeginDestroy() override;
 
 	static bool handleIsMissing();
 	static _Tcl_CreateObjCommandProto get_Tcl_CreateObjCommand();
@@ -211,10 +200,6 @@ public:
 		static const FString tnameconv = tname;
 		static const Tcl_ObjType type = { tname, &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			if(IS_TARRAY<T>::OF_UOBJECTS) {
-				UE_LOG(LogClass, Log, TEXT("Is TArray %s"), *tnameconv)
-			}
-
 			auto val = _Tcl_NewObj();
 			val->internalRep.otherValuePtr = static_cast<ClientData>(ptr);
 			val->typePtr = &type;
@@ -480,20 +465,16 @@ template<typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
 				const int numberOfParams = sizeof...(ParamTypes);
-
 				numberOfArgs--;  // proc is counted too
-
 				auto data = static_cast<WrapperContainer<Cls>*>(clientData);
 				if (numberOfArgs != numberOfParams) {
 					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
 					return TCL_ERROR;
 				}
-
 				tuple<Cls*, Tcl_Interp*, FString, ParamTypes...> values;
 				get<0>(values) = data->self;
 				get<1>(values) = interpreter;
 				get<2>(values) = data->name;
-
 				auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<Cls*, Tcl_Interp*, FString, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
 				if(!ok) { return TCL_ERROR; }
 				auto delegateWrapper = [](Cls* self, Tcl_Interp* interpreter, FString name, ParamTypes... args) -> bool {
@@ -522,20 +503,16 @@ template<> struct COMPILE_DELEGATE_ON_PARAMS<void> {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
 				const int numberOfParams = sizeof...(ParamTypes);
-
 				numberOfArgs--;  // proc is counted too
-
 				auto data = static_cast<WrapperContainer<Cls>*>(clientData);
 				if (numberOfArgs != numberOfParams) {
 					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
 					return TCL_ERROR;
 				}
-
 				tuple<Cls*, Tcl_Interp*, FString, ParamTypes...> values;
 				get<0>(values) = data->self;
 				get<1>(values) = interpreter;
 				get<2>(values) = data->name;
-
 				auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<Cls*, Tcl_Interp*, FString, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
 				if(!ok) { return TCL_ERROR; }
 				auto delegateWrapper = [](Cls* self, Tcl_Interp* interpreter, FString name, ParamTypes... args) -> bool {
