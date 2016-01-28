@@ -1,2 +1,7 @@
 # Tcl/Unreal
-Docs are out of date. I'll try to write some during this weekend (dd/mm/yyyy -> 23/01/2016), promise...
+Version 1.0 released! This means it's ready for production.
+Updated docs are coming, the interface is very simple however.
+There is a TclComponent and it has a bind templated method,
+a define templated method, a pack templated method and a BP
+exposed Eval method together with experimental and advanced deconstructors.
+That's it!
