@@ -90,6 +90,16 @@ protected:
 
 	Tcl_Interp* interpreter = nullptr;
 
+	int defineNil() {
+		static const Tcl_ObjType type = { "NIL", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			auto val = _Tcl_NewObj();
+			val->typePtr = &type;
+			*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
+			return TCL_OK;
+		}
+	}
+
 	int eval(const char*);
 
 	template<typename Last> void collect(TArray<Tcl_Obj*>* collector, Last head) {
@@ -221,7 +231,7 @@ public:
 	
 };
 
-template<typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
+template<typename T> struct IMPL_CONVERT {  // UStruct, TArray<T>, TSubclassOf<T>
 	template<typename> FORCEINLINE static int ON_TARRAY_OF_UOBJECTS(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val, FString parentType, FString gottenType) {
 		return _TCL_SKIP_;
 	}
@@ -252,11 +262,13 @@ template<typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
 		return ON_TARRAY_OF_UOBJECTS(interpreter, obj, val, parentType, gottenType);
 	}
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
+		static const FString nilName = "NIL";
 		static const FString desiredType = typeid(T).name();
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		FString gottenType = obj->typePtr->name;
 		auto status = COND<IS_TARRAY<T>::OF_UOBJECTS>(interpreter, obj, val, desiredType, gottenType);
 		if(status != _TCL_SKIP_) { return status; }
+		if(gottenType == nilName) { return TCL_OK; }
 		if(gottenType == desiredType) {
 			auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));
 			*val = deref;
@@ -267,7 +279,7 @@ template<typename T> struct IMPL_CONVERT {  // UStruct and TArray<T>
 		}
 	}
 };
-template<typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubclassOf, use bind<...TSubclassOf<T>*...> instead of bind<...TSubclassOf<T>...>
+template<typename T> struct IMPL_CONVERT<T*> {  // Pointers
 	template<bool> FORCEINLINE static int ON_UOBJECT(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val, FString parentType, FString gottenType) {
 		return _TCL_SKIP_;
 	}
@@ -284,13 +296,11 @@ template<typename T> struct IMPL_CONVERT<T*> {  // UObject* and TSubclassOf, use
 		return TCL_ERROR;
 	}
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
+		static const FString nilName = "NIL";
 		static const FString desiredType = typeid(T).name();
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-		if(obj->internalRep.otherValuePtr == nullptr) {
-			*val = nullptr;
-			return TCL_OK;
-		}
 		FString gottenType = obj->typePtr->name;
+		if(gottenType == nilName) { return TCL_OK; }
 		auto status = ON_UOBJECT<std::is_base_of<UObject, T>::value>(interpreter, obj, val, desiredType, gottenType);
 		if(status != _TCL_SKIP_) { return status; }
 		if(gottenType == desiredType) {  // TSubclassOf<T> basically always has the same class, so it's okay to leave it to the base case

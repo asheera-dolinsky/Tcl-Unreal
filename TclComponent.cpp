@@ -112,7 +112,7 @@ void UTclComponent::BeginPlay() {
 				}
 				else {
 					interpreter = _Tcl_CreateInterp();
-					define<UObject>("NIL", nullptr);
+					defineNil();
 					UE_LOG(LogClass, Log, TEXT("Bootstrapping Tcl and its functions succeeded!"))
 				}
 			}
@@ -120,7 +120,7 @@ void UTclComponent::BeginPlay() {
 		else { UE_LOG(LogClass, Error, TEXT("Cannot find %s for Tcl!"), _TCL_DLL_FNAME_) }
 	} else {
 		interpreter = _Tcl_CreateInterp();
-		define<UObject>("NIL", nullptr);
+		defineNil();
 	}
 	
 }
