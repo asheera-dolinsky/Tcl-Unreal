@@ -231,7 +231,7 @@ public:
 	
 };
 
-template<typename T> struct IMPL_CONVERT {  // UStruct, TArray<T>, TSubclassOf<T>
+template<typename T> struct IMPL_CONVERT {  // UStruct, TArray<T>, TSubclassOf<T>, TSubclassOf<T> always has the same class, so it's okay to leave it to the base case
 	template<typename> FORCEINLINE static int ON_TARRAY_OF_UOBJECTS(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val, FString parentType, FString gottenType) {
 		return _TCL_SKIP_;
 	}
@@ -303,7 +303,7 @@ template<typename T> struct IMPL_CONVERT<T*> {  // Pointers
 		if(gottenType == nilName) { return TCL_OK; }
 		auto status = ON_UOBJECT<std::is_base_of<UObject, T>::value>(interpreter, obj, val, desiredType, gottenType);
 		if(status != _TCL_SKIP_) { return status; }
-		if(gottenType == desiredType) {  // TSubclassOf<T> basically always has the same class, so it's okay to leave it to the base case
+		if(gottenType == desiredType) {
 			*val = static_cast<T*>(obj->internalRep.otherValuePtr);
 			return TCL_OK;
 		}
