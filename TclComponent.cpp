@@ -166,11 +166,11 @@ int32 UTclComponent::Eval(FString Filename, FString Code) {
 			UE_LOG(LogClass, Log, TEXT("Tcl loaded a script file at path: %s"), *fname)
 			FFileHelper::LoadFileToString(Code, *fname);
 		} else {
-			UE_LOG(LogClass, Error, TEXT("File at path: %s doesn't exist! Executing the Code field"), *fname)
+			UE_LOG(LogClass, Warning, TEXT("File at path: %s doesn't exist! Executing the Code field"), *fname)
 		}
 	}
 	auto status = eval(TCHAR_TO_ANSI(*Code));
-	if (status != TCL_OK) { UE_LOG(LogClass, Error, TEXT("Tcl script error for! filepath: '%s' or code: '%s'!"), *fname, *Code) }
+	if (status == TCL_ERROR) { UE_LOG(LogClass, Error, TEXT("Tcl script error for! filepath: '%s' with code: '%s'!"), *fname, *Code) }
 	return status;
 
 }
