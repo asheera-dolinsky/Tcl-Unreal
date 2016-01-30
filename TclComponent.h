@@ -81,6 +81,7 @@ protected:
 	static _Tcl_EvalProto _Tcl_Eval;
 	static _Tcl_CreateObjCommandProto _Tcl_CreateObjCommand;
 	static _Tcl_SetObjResultProto _Tcl_SetObjResult;
+	static _Tcl_GetObjResultProto _Tcl_GetObjResult;
 	static _Tcl_NewObjProto _Tcl_NewObj;
 	static _Tcl_NewBooleanObjProto _Tcl_NewBooleanObj;
 	static _Tcl_NewLongObjProto _Tcl_NewLongObj;
@@ -113,6 +114,17 @@ protected:
 	template<typename First, typename... Rest> void collect(TArray<Tcl_Obj*>* collector, First head, Rest... tail) {
 		collector->Add(NEW_OBJ<First>::MAKE(interpreter, head));
 		collect<Rest...>(collector, tail...);
+	}
+
+	template<typename P> Tcl_Obj* tarrayToList(TArray<P> arr) {
+		const auto len = arr.Num();
+		auto objs = new Tcl_Obj*[len];
+		for(int i = 0; i < len; i++) {
+			objs[i] = NEW_OBJ<P>::MAKE(interpreter, arr[i]);
+		}
+		auto result = _Tcl_NewListObj(len, static_cast<ClientData>(objs));
+		delete[] objs;
+		return result;
 	}
 
 	template<typename ReturnType, typename ReturnPropertyType, typename T> int generalizedDeconstructor(FString name) {
@@ -187,6 +199,16 @@ public:
 		}
 	}
 
+	template<typename P> int convert(TArray<P> arr) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			_Tcl_SetObjResult(interpreter, tarrayToList(arr));
+			return TCL_OK;
+		}
+	}
+
+	Tcl_Obj* getresult();
+	int setresult(Tcl_Obj* result);
+
 	template<typename T, typename P> int addStructDeconstructor(FString name) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			generalizedDeconstructor<P, UStructProperty, T>(name);
@@ -242,21 +264,23 @@ template<typename T> struct IMPL_CONVERT {  // UStruct, TArray<T>, TSubclassOf<T
 	}
 	template<typename P> FORCEINLINE static int ON_TARRAY_OF_UOBJECTS(Tcl_Interp* interpreter, Tcl_Obj* obj, TArray<P>* val, FString parentType, FString gottenType) {
 		static const FString genericType = "TArray of UObjects";
+		// here be dragons!
+		// TODO: REWORK THIS PART, as the typechecking is naive
 		if(gottenType == genericType) {
 			auto ptr = static_cast<TArray<UObject*>*>(obj->internalRep.otherValuePtr);
-			if(ptr->Num() <= 0) {  // assuming the array doesn't access the contained if empty, otherwise most probably a crash.
-				auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));  // here be dragons!
-				*val = deref;
-				return TCL_OK;
-			}
 			typedef remove_pointer<P>::type O;
-			auto repr = (*ptr)[0];
-			if(repr->IsA(O::StaticClass())) {  // a bit of a hack
-				auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));
-				*val = deref;
-				return TCL_OK;
-			} else { gottenType = repr->GetClass()->GetDescription(); }
-		} 
+			for(auto item : *ptr) {
+				if(!(item == nullptr || item->IsA(O::StaticClass()))) {
+					auto cls = item->GetClass();
+					gottenType = (cls == nullptr)? "nullptr" : cls->GetDescription();
+					UE_LOG(LogClass, Error, TEXT("Tcl error! Received a TArray containing wrong type of UObjects: '%s'. The TArray should be of the type or subtype: '%s'."), *gottenType, *parentType)
+					return TCL_ERROR;
+				}
+			}
+			auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));
+			*val = deref;
+			return TCL_OK;
+		}
 		UE_LOG(LogClass, Error, TEXT("Tcl error! Received a TArray containing wrong type of UObjects: '%s'. The TArray should be of the type or subtype: '%s'."), *gottenType, *parentType)
 		return TCL_ERROR;
 	}
@@ -274,12 +298,17 @@ template<typename T> struct IMPL_CONVERT {  // UStruct, TArray<T>, TSubclassOf<T
 		static const FString genericType = "TSubclassOf of UObjects";
 		if(gottenType == nilName || obj->internalRep.otherValuePtr == nullptr) { return TCL_OK; }
 		if(gottenType == genericType) {
+			FString name = typeid(P).name();
 			auto ptr = static_cast<TSubclassOf<UObject>*>(obj->internalRep.otherValuePtr);
-			if(ptr->GetDefaultObject()->IsA(P::StaticClass())) {
-				auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));
-				*val = deref;
+			auto repr = *ptr;
+			TSubclassOf<class UObject> cls = *repr;
+			TSubclassOf<class UObject> parentcls =  P::StaticClass();
+			auto clsvalid = *cls != nullptr;
+			auto pass = ((*parentcls != nullptr) && clsvalid)? (*cls)->IsChildOf(*parentcls) : false;
+			if(pass) {
+				*val = *repr;
 				return TCL_OK;
-			} else { gottenType = ptr->GetDefaultObject()->GetClass()->GetDescription(); }
+			} else { gottenType = clsvalid? repr->GetDescription() : "nullptr"; }
 		}
 		UE_LOG(LogClass, Error, TEXT("Tcl error! Received a TSubclassOf containing wrong type of UObjects: '%s'. The TSubclassOf should be of the type or subtype: '%s'."), *gottenType, *parentType)
 		return TCL_ERROR;
@@ -293,12 +322,20 @@ template<typename T> struct IMPL_CONVERT {  // UStruct, TArray<T>, TSubclassOf<T
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
 		static const FString desiredType = typeid(T).name();
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		if (obj == nullptr || obj->typePtr == nullptr) {
+			UE_LOG(LogClass, Error, TEXT("Tcl error! Tcl_Obj* or its typePtr is a nullptr. It should be of type or subtype: '%s'."), *desiredType)
+			return TCL_ERROR;
+		}
 		FString gottenType = obj->typePtr->name;
 		auto status = TARRAY_COND<IS_TARRAY<T>::OF_UOBJECTS>(interpreter, obj, val, desiredType, gottenType);
 		if(status != _TCL_SKIP_) { return status; }
 		status = TSUBCLASS_COND<IS_TSUBCLASSOF<T>::OF_UOBJECTS>(interpreter, obj, val, desiredType, gottenType);
 		if(status != _TCL_SKIP_) { return status; }
 		if(gottenType == desiredType) {
+			if(obj == nullptr || obj->internalRep.otherValuePtr == nullptr) {
+				UE_LOG(LogClass, Error, TEXT("Tcl error! Received a nullptr instead of a flat type: '%s'."), *desiredType)
+				return TCL_ERROR;
+			}  // flat values should never return a nullptr
 			auto deref = *(static_cast<T*>(obj->internalRep.otherValuePtr));
 			*val = deref;
 			return TCL_OK;
@@ -328,6 +365,10 @@ template<typename T> struct IMPL_CONVERT<T*> {  // Pointers
 		static const FString nilName = "NIL";
 		static const FString desiredType = typeid(T).name();
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		if (obj == nullptr || obj->typePtr == nullptr) {
+			UE_LOG(LogClass, Error, TEXT("Tcl error! Tcl_Obj* or its typePtr is a nullptr. It should be of type or subtype: '%s'."), *desiredType)
+			return TCL_ERROR;
+		}
 		FString gottenType = obj->typePtr->name;
 		if(gottenType == nilName || obj->internalRep.otherValuePtr == nullptr) { return TCL_OK; }
 		auto status = ON_UOBJECT<std::is_base_of<UObject, T>::value>(interpreter, obj, val, desiredType, gottenType);
@@ -409,6 +450,7 @@ template<typename T> struct NEW_OBJ {
 		auto obj = UTclComponent::get_Tcl_NewObj()();
 		obj->internalRep.otherValuePtr = static_cast<ClientData>(new T(val));
 		obj->typePtr = &type;
+		FString tname = obj->typePtr->name;
 		return obj;
 	}
 };

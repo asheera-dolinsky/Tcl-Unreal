@@ -31,7 +31,8 @@ _Tcl_CreateInterpProto UTclComponent::_Tcl_CreateInterp = nullptr;
 _Tcl_DeleteInterpProto UTclComponent::_Tcl_DeleteInterp = nullptr;
 _Tcl_EvalProto UTclComponent::_Tcl_Eval = nullptr;
 _Tcl_CreateObjCommandProto UTclComponent::_Tcl_CreateObjCommand = nullptr;
-_Tcl_SetObjResultProto UTclComponent::_Tcl_SetObjResult;
+_Tcl_SetObjResultProto UTclComponent::_Tcl_SetObjResult = nullptr;
+_Tcl_GetObjResultProto UTclComponent::_Tcl_GetObjResult = nullptr;
 _Tcl_NewObjProto UTclComponent::_Tcl_NewObj = nullptr;
 _Tcl_NewBooleanObjProto UTclComponent::_Tcl_NewBooleanObj = nullptr;
 _Tcl_NewLongObjProto UTclComponent::_Tcl_NewLongObj = nullptr;
@@ -69,6 +70,8 @@ void UTclComponent::BeginPlay() {
 				_Tcl_CreateObjCommand = static_cast<_Tcl_CreateObjCommandProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_SetObjResult";
 				_Tcl_SetObjResult = static_cast<_Tcl_SetObjResultProto>(FPlatformProcess::GetDllExport(handle, *procName));
+				procName = "Tcl_GetObjResult";
+				_Tcl_GetObjResult = static_cast<_Tcl_GetObjResultProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewObj";
 				_Tcl_NewObj = static_cast<_Tcl_NewObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewBooleanObj";
@@ -96,6 +99,7 @@ void UTclComponent::BeginPlay() {
 					_Tcl_Eval == nullptr ||
 					_Tcl_CreateObjCommand == nullptr ||
 					_Tcl_SetObjResult == nullptr ||
+					_Tcl_GetObjResult == nullptr ||
 					_Tcl_NewObj == nullptr ||
 					_Tcl_NewBooleanObj == nullptr ||
 					_Tcl_NewLongObj == nullptr ||
@@ -173,4 +177,21 @@ int32 UTclComponent::Eval(FString Filename, FString Code) {
 	if (status == TCL_ERROR) { UE_LOG(LogClass, Error, TEXT("Tcl script error for! filepath: '%s' with code: '%s'!"), *fname, *Code) }
 	return status;
 
+}
+
+Tcl_Obj* UTclComponent::getresult() {
+	if (handleIsMissing() || interpreter == nullptr) { return _Tcl_NewObj(); } else {
+		auto result = _Tcl_GetObjResult(interpreter);
+		//FString fname = result->typePtr->name;
+		//UE_LOG(LogClass, Warning, TEXT("getresult: %s"), *fname)
+		return result;
+	}
+}
+int UTclComponent::setresult(Tcl_Obj* result) {
+	if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+		//FString fname = result->typePtr->name;
+		//UE_LOG(LogClass, Warning, TEXT("setresult: %s"), *fname)
+		_Tcl_SetObjResult(interpreter, result);
+		return TCL_OK;
+	}
 }
