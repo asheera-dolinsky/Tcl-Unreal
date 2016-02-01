@@ -563,13 +563,11 @@ template<typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
 				auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
 				if(!ok) { return TCL_ERROR; }
 				auto delegateWrapper = [](WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>* data, ParamTypes... args) -> bool {
-					TBaseDelegate<ReturnType, ParamTypes...> del;
-					del.BindUFunction(data->self, TCHAR_TO_ANSI(*(data->name)));
-					if(del.IsBound()) { 
-						auto ret = del.Execute(args...);
+					if(data->del->IsBound()) { 
+						auto ret = data->del->Execute(args...);
 						PROCESS_RETURN<ReturnType>::USE(data->interpreter, ret);
 					}
-					return del.IsBound();
+					return data->del->IsBound();
 				};
 				typedef bool(*DelegateWrapperFptr)(WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...);
 				ok = apply(static_cast<DelegateWrapperFptr>(delegateWrapper), values);
@@ -604,9 +602,7 @@ template<> struct COMPILE_DELEGATE_ON_PARAMS<void> {
 				auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<WrapperContainer<Cls, TBaseDelegate<void, ParamTypes...>>*, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
 				if(!ok) { return TCL_ERROR; }
 				auto delegateWrapper = [](WrapperContainer<Cls, TBaseDelegate<void, ParamTypes...>>* data, ParamTypes... args) -> bool {
-					TBaseDelegate<void, ParamTypes...> del;
-					del.BindUFunction(data->self, TCHAR_TO_ANSI(*(data->name)));
-					return del.ExecuteIfBound(args...);
+					return data->del->ExecuteIfBound(args...);
 				};
 				typedef bool(*DelegateWrapperFptr)(WrapperContainer<Cls, TBaseDelegate<void, ParamTypes...>>*, ParamTypes...);
 				ok = apply(static_cast<DelegateWrapperFptr>(delegateWrapper), values);
