@@ -29,7 +29,6 @@
 #pragma once
 
 #define _TCL_DLL_FNAME_ "tcl86t.dll"
-#define _STRUCT_OFFSET_ 2
 #include <typeinfo>
 #include "Api.hpp"
 #include "TupleUtils.hpp"
@@ -43,7 +42,7 @@ template<int numberOfParams> struct COMPILE_ON_PARAMS {
 	template<typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
 		Tcl_Obj* objects[numberOfParams];
 		for (int i=0; i<numberOfParams; i++) { objects[i] = const_cast<Tcl_Obj*>(arguments[i+1]); }
-		return POPULATE<numberOfParams+_STRUCT_OFFSET_>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
+		return POPULATE<numberOfParams>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
 };
 template<> struct COMPILE_ON_PARAMS<0> {
@@ -62,9 +61,11 @@ template<typename T> struct IS_TSUBCLASSOF<TSubclassOf<T>> : std::true_type {
 	static const bool OF_UOBJECTS = std::is_base_of<UObject, T>::value;
 };
 
-template<typename T> struct WrapperContainer {
+template<typename T, typename D> struct WrapperContainer {
 	T* self;
+	Tcl_Interp* interpreter;
 	FString name;
+	D* del;
 };
 
 template<typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS;
@@ -126,7 +127,7 @@ protected:
 		delete[] objs;
 		return result;
 	}
-
+	/*
 	template<typename ReturnType, typename ReturnPropertyType, typename T> int generalizedDeconstructor(FString name) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
@@ -153,6 +154,7 @@ protected:
 			return TCL_OK;
 		}
 	}
+	*/
 public:	
 	UTclComponent();
 	virtual void BeginPlay() override;
@@ -177,8 +179,9 @@ public:
 	static void Tcl_UpdateStringProc(Tcl_Obj *obj);
 	static int Tcl_SetFromAnyProc(Tcl_Interp*, Tcl_Obj*);
 
-	template<typename Cls> static void freeWrapperContainer(ClientData clientData) {
-		auto data = static_cast<WrapperContainer<Cls>*>(clientData);
+	template<typename Cls, typename D> static void freeWrapperContainer(ClientData clientData) {
+		auto data = static_cast<WrapperContainer<Cls, D>*>(clientData);
+		delete data->del;
 		delete data;
 		data = nullptr; 
 	}
@@ -428,11 +431,11 @@ template<> struct IMPL_CONVERT<FString> {  // FString
 
 template<int idx> struct POPULATE {
 	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
-		auto result = IMPL_CONVERT<std::tuple_element<idx, TupleSpecialization>::type>::CALL(interpreter, objects[idx-_STRUCT_OFFSET_-1], &(get<idx>(values)));
+		auto result = IMPL_CONVERT<std::tuple_element<idx, TupleSpecialization>::type>::CALL(interpreter, objects[idx-1], &(get<idx>(values)));
 		return !(result == _TCL_BOOTSTRAP_FAIL_ || result == TCL_ERROR) && POPULATE<idx-1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
 	}
 };
-template<> struct POPULATE<_STRUCT_OFFSET_> {
+template<> struct POPULATE<0> {
 	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
 		return true;
 	}
@@ -549,33 +552,36 @@ template<typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
 				const int numberOfParams = sizeof...(ParamTypes);
 				numberOfArgs--;  // proc is counted too
-				auto data = static_cast<WrapperContainer<Cls>*>(clientData);
+				auto data = static_cast<WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>*>(clientData);
 				if (numberOfArgs != numberOfParams) {
 					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
 					return TCL_ERROR;
 				}
-				tuple<Cls*, Tcl_Interp*, FString, ParamTypes...> values;
-				get<0>(values) = data->self;
-				get<1>(values) = interpreter;
-				get<2>(values) = data->name;
-				auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<Cls*, Tcl_Interp*, FString, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
+				tuple<WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...> values;
+				get<0>(values) = data;
+				
+				auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
 				if(!ok) { return TCL_ERROR; }
-				auto delegateWrapper = [](Cls* self, Tcl_Interp* interpreter, FString name, ParamTypes... args) -> bool {
+				auto delegateWrapper = [](WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>* data, ParamTypes... args) -> bool {
 					TBaseDelegate<ReturnType, ParamTypes...> del;
-					del.BindUFunction(self, TCHAR_TO_ANSI(*name));
+					del.BindUFunction(data->self, TCHAR_TO_ANSI(*(data->name)));
 					if(del.IsBound()) { 
 						auto ret = del.Execute(args...);
-						PROCESS_RETURN<ReturnType>::USE(interpreter, ret);
+						PROCESS_RETURN<ReturnType>::USE(data->interpreter, ret);
 					}
 					return del.IsBound();
 				};
-				typedef bool(*DelegateWrapperFptr)(Cls* self, Tcl_Interp*, FString name, ParamTypes...);
+				typedef bool(*DelegateWrapperFptr)(WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...);
 				ok = apply(static_cast<DelegateWrapperFptr>(delegateWrapper), values);
 				return ok? TCL_OK : TCL_ERROR;
 			};
 			const char* fname = TCHAR_TO_ANSI(*name);
-			auto data = new WrapperContainer<Cls>({ self, name });
-			UTclComponent::get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<Cls>);
+			
+			auto del = new TBaseDelegate<ReturnType, ParamTypes...>;
+			del->BindUFunction(self, TCHAR_TO_ANSI(*name));
+
+			auto data = new WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>({ self, interpreter, name, del });
+			UTclComponent::get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>);
 			data = nullptr;
 			return TCL_OK;
 		}
@@ -587,35 +593,38 @@ template<> struct COMPILE_DELEGATE_ON_PARAMS<void> {
 			auto wrapper = [](ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) -> int {
 				const int numberOfParams = sizeof...(ParamTypes);
 				numberOfArgs--;  // proc is counted too
-				auto data = static_cast<WrapperContainer<Cls>*>(clientData);
+				auto data = static_cast<WrapperContainer<Cls, TBaseDelegate<void, ParamTypes...>>*>(clientData);
 				if (numberOfArgs != numberOfParams) {
 					UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
 					return TCL_ERROR;
 				}
-				tuple<Cls*, Tcl_Interp*, FString, ParamTypes...> values;
-				get<0>(values) = data->self;
-				get<1>(values) = interpreter;
-				get<2>(values) = data->name;
-				auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<Cls*, Tcl_Interp*, FString, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
+				tuple<WrapperContainer<Cls, TBaseDelegate<void, ParamTypes...>>*, ParamTypes...> values;
+				get<0>(values) = data;
+
+				auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<WrapperContainer<Cls, TBaseDelegate<void, ParamTypes...>>*, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
 				if(!ok) { return TCL_ERROR; }
-				auto delegateWrapper = [](Cls* self, Tcl_Interp* interpreter, FString name, ParamTypes... args) -> bool {
+				auto delegateWrapper = [](WrapperContainer<Cls, TBaseDelegate<void, ParamTypes...>>* data, ParamTypes... args) -> bool {
 					TBaseDelegate<void, ParamTypes...> del;
-					del.BindUFunction(self, TCHAR_TO_ANSI(*name));
+					del.BindUFunction(data->self, TCHAR_TO_ANSI(*(data->name)));
 					return del.ExecuteIfBound(args...);
 				};
-				typedef bool(*DelegateWrapperFptr)(Cls* self, Tcl_Interp*, FString name, ParamTypes...);
+				typedef bool(*DelegateWrapperFptr)(WrapperContainer<Cls, TBaseDelegate<void, ParamTypes...>>*, ParamTypes...);
 				ok = apply(static_cast<DelegateWrapperFptr>(delegateWrapper), values);
 				return ok? TCL_OK : TCL_ERROR;
 			};
 			const char* fname = TCHAR_TO_ANSI(*name);
-			auto data = new WrapperContainer<Cls>({ self, name });
-			UTclComponent::get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<Cls>);
+
+			auto del = new TBaseDelegate<void, ParamTypes...>;
+			del->BindUFunction(self, TCHAR_TO_ANSI(*name));
+
+			auto data = new WrapperContainer<Cls, TBaseDelegate<void, ParamTypes...>>({ self, interpreter, name, del });
+			UTclComponent::get_Tcl_CreateObjCommand()(interpreter, fname, wrapper, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<Cls, TBaseDelegate<void, ParamTypes...>>);
 			data = nullptr;
 			return TCL_OK;
 		}
 	}
 };
-
+/*
 template<typename ReturnType> struct SPECIALIZED_DECONSTRUCTOR<ReturnType, UStructProperty> {
 	template<typename T> FORCEINLINE static bool ENGAGE(UObject* self, Tcl_Interp* interpreter, FString name, T retStruct, FString retName) {
 		TBaseDelegate<ReturnType, T, FString> del;
@@ -743,3 +752,4 @@ template<> struct SPECIALIZED_DECONSTRUCTOR<float, UNumericProperty> {
 		return del.IsBound();
 	}
 };
+*/
