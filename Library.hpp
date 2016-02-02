@@ -4,8 +4,15 @@ namespace Library {
 		Tcl_Obj* obj = nullptr;
 		UTclComponent* comp = nullptr;
 		if(Actor != nullptr) { comp = Actor->FindComponentByClass<UTclComponent>(); } else { return obj; }
-		if(comp != nullptr) { obj = comp->purge(); }
+		if(comp != nullptr) { obj = comp->Purge(); }
 		return obj;
+
+	}
+	int32 Eval(AActor* Actor, FString Filename, FString Code) {
+		UTclComponent* comp = nullptr;
+		if(Actor != nullptr) { comp = Actor->FindComponentByClass<UTclComponent>(); } else { return TCL_ERROR; }
+		return (comp == nullptr)? TCL_ERROR : comp->Eval(Filename, Code);
+
 	}
 
 }

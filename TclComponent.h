@@ -142,8 +142,8 @@ public:
 	static void Tcl_UpdateStringProc(Tcl_Obj *obj);
 	static int Tcl_SetFromAnyProc(Tcl_Interp*, Tcl_Obj*);
 
-	void fill(Tcl_Obj*);
-	Tcl_Obj* purge();
+	void Fill(Tcl_Obj*);
+	Tcl_Obj* Purge();
 
 	template<typename D> static void freeWrapperContainer(ClientData clientData) {
 		auto data = static_cast<WrapperContainer<D>*>(clientData);
@@ -220,6 +220,9 @@ public:
 			return TCL_OK;
 		}
 	}
+
+	void AllActorsOf(TSubclassOf<AActor>);
+	void Convert(TArray<UObject*>);
 
 	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 Eval(FString Filename, FString Code);

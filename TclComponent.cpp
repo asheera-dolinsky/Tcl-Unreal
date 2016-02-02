@@ -51,12 +51,12 @@ UTclComponent::UTclComponent(const FObjectInitializer& ObjectInitializer) : Supe
 
 }
 
-void UTclComponent::fill(Tcl_Obj* obj) {
+void UTclComponent::Fill(Tcl_Obj* obj) {
 	buffer = obj;
 	if(buffer != nullptr) { buffer->refCount++; }
 
 }
-Tcl_Obj* UTclComponent::purge() {
+Tcl_Obj* UTclComponent::Purge() {
 	auto obj = buffer;
 	buffer = nullptr;
 	if(obj == nullptr) { obj = _Tcl_NewObj(); } else { obj->refCount--; }
@@ -70,9 +70,12 @@ int UTclComponent::init() {
 	auto val = _Tcl_NewObj();
 	val->typePtr = &type;
 	*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
-	this->bindstatic<TSubclassOf<UObject>, FString>(&Library::FindClass, "FindClass");
-	this->bindmethod<UTclComponent, void, Tcl_Obj*>(this, &UTclComponent::fill, "Fill");
+	this->bindmethod<UTclComponent, void, Tcl_Obj*>(this, &UTclComponent::Fill, "Fill");
 	this->bindstatic<Tcl_Obj*, AActor*>(&Library::Purge, "Purge");
+	this->bindstatic<int32, AActor*, FString, FString>(&Library::Eval, "Eval");
+	this->bindstatic<TSubclassOf<UObject>, FString>(&Library::FindClass, "FindClass");
+	this->bindmethod<UTclComponent, void, TSubclassOf<AActor>>(this, &UTclComponent::AllActorsOf, "AllActorsOf");
+	this->bindmethod<UTclComponent, void, TArray<UObject*>>(this, &UTclComponent::Convert, "Convert");
 	return TCL_OK;
 
 }
@@ -175,7 +178,7 @@ _Tcl_GetDoubleFromObjProto UTclComponent::get_Tcl_GetDoubleFromObj() { return _T
 _Tcl_GetStringFromObjProto UTclComponent::get_Tcl_GetStringFromObj() { return _Tcl_GetStringFromObj; }
 
 int UTclComponent::eval(const char* code) {
-	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+	if(handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 	else { return _Tcl_Eval(interpreter, code); }
 
 }
@@ -196,3 +199,12 @@ int32 UTclComponent::Eval(FString Filename, FString Code) {
 	return status;
 
 }
+
+void UTclComponent::AllActorsOf(TSubclassOf<AActor> Cls) {
+	TArray<AActor*> actors;
+	if (Cls != nullptr) { UGameplayStatics::GetAllActorsOfClass(GetWorld(), Cls, actors); }
+	this->convert(actors);
+
+}
+
+void UTclComponent::Convert(TArray<UObject*> Arr) { this->convert(Arr); }
