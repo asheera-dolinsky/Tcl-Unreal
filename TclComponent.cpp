@@ -53,11 +53,13 @@ UTclComponent::UTclComponent(const FObjectInitializer& ObjectInitializer) : Supe
 
 void UTclComponent::fill(Tcl_Obj* obj) {
 	buffer = obj;
+	if(buffer != nullptr) { buffer->refCount++; }
 
 }
 Tcl_Obj* UTclComponent::purge() {
 	auto obj = buffer;
 	buffer = nullptr;
+	if(obj == nullptr) { obj = _Tcl_NewObj(); } else { obj->refCount--; }
 	return obj;
 
 }
