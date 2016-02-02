@@ -30,7 +30,6 @@ typedef void(*_Tcl_DeleteInterpProto)(Tcl_Interp*);
 typedef int(*_Tcl_EvalProto)(Tcl_Interp*, const char*);
 typedef void(*_Tcl_CreateObjCommandProto)(Tcl_Interp*, const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
 typedef void(*_Tcl_SetObjResultProto)(Tcl_Interp*, Tcl_Obj*);
-typedef Tcl_Obj*(*_Tcl_GetObjResultProto)(Tcl_Interp*);
 typedef Tcl_Obj*(*_Tcl_NewObjProto)(void);
 typedef Tcl_Obj*(*_Tcl_NewBooleanObjProto)(int);
 typedef Tcl_Obj*(*_Tcl_NewLongObjProto)(long);

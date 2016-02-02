@@ -33,7 +33,6 @@ _Tcl_DeleteInterpProto UTclComponent::_Tcl_DeleteInterp = nullptr;
 _Tcl_EvalProto UTclComponent::_Tcl_Eval = nullptr;
 _Tcl_CreateObjCommandProto UTclComponent::_Tcl_CreateObjCommand = nullptr;
 _Tcl_SetObjResultProto UTclComponent::_Tcl_SetObjResult = nullptr;
-_Tcl_GetObjResultProto UTclComponent::_Tcl_GetObjResult = nullptr;
 _Tcl_NewObjProto UTclComponent::_Tcl_NewObj = nullptr;
 _Tcl_NewBooleanObjProto UTclComponent::_Tcl_NewBooleanObj = nullptr;
 _Tcl_NewLongObjProto UTclComponent::_Tcl_NewLongObj = nullptr;
@@ -57,13 +56,10 @@ TSubclassOf<UObject> FindClass(FString Name) { return FindObjectSafe<UClass>(ANY
 int UTclComponent::init() {
 	static const Tcl_ObjType type = { "NIL", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
 	interpreter = _Tcl_CreateInterp();
-	
 	auto val = _Tcl_NewObj();
 	val->typePtr = &type;
 	*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
-
 	this->bindstatic<TSubclassOf<UObject>, FString>(&Library::FindClass, "FindClass");
-	
 	return TCL_OK;
 
 }
@@ -87,8 +83,6 @@ void UTclComponent::BeginPlay() {
 				_Tcl_CreateObjCommand = static_cast<_Tcl_CreateObjCommandProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_SetObjResult";
 				_Tcl_SetObjResult = static_cast<_Tcl_SetObjResultProto>(FPlatformProcess::GetDllExport(handle, *procName));
-				procName = "Tcl_GetObjResult";
-				_Tcl_GetObjResult = static_cast<_Tcl_GetObjResultProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewObj";
 				_Tcl_NewObj = static_cast<_Tcl_NewObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewBooleanObj";
@@ -116,7 +110,6 @@ void UTclComponent::BeginPlay() {
 					_Tcl_Eval == nullptr ||
 					_Tcl_CreateObjCommand == nullptr ||
 					_Tcl_SetObjResult == nullptr ||
-					_Tcl_GetObjResult == nullptr ||
 					_Tcl_NewObj == nullptr ||
 					_Tcl_NewBooleanObj == nullptr ||
 					_Tcl_NewLongObj == nullptr ||

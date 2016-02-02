@@ -81,7 +81,6 @@ protected:
 	static _Tcl_EvalProto _Tcl_Eval;
 	static _Tcl_CreateObjCommandProto _Tcl_CreateObjCommand;
 	static _Tcl_SetObjResultProto _Tcl_SetObjResult;
-	static _Tcl_GetObjResultProto _Tcl_GetObjResult;
 	static _Tcl_NewObjProto _Tcl_NewObj;
 	static _Tcl_NewBooleanObjProto _Tcl_NewBooleanObj;
 	static _Tcl_NewLongObjProto _Tcl_NewLongObj;
