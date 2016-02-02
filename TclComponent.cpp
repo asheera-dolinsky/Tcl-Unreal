@@ -24,6 +24,7 @@
 
 #include "PhantomGunsDemo.h"
 #include "TclComponent.h"
+#include "Library.hpp"
 
 
 void* UTclComponent::handle = nullptr;
@@ -48,6 +49,22 @@ _Tcl_GetStringFromObjProto UTclComponent::_Tcl_GetStringFromObj = nullptr;
 UTclComponent::UTclComponent(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer) {
 	bWantsBeginPlay = true;
 	PrimaryComponentTick.bCanEverTick = false;
+
+}
+
+TSubclassOf<UObject> FindClass(FString Name) { return FindObjectSafe<UClass>(ANY_PACKAGE, *Name); }
+
+int UTclComponent::init() {
+	static const Tcl_ObjType type = { "NIL", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
+	interpreter = _Tcl_CreateInterp();
+	
+	auto val = _Tcl_NewObj();
+	val->typePtr = &type;
+	*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
+
+	this->bindstatic<TSubclassOf<UObject>, FString>(&Library::FindClass, "FindClass");
+	
+	return TCL_OK;
 
 }
 
@@ -115,25 +132,20 @@ void UTclComponent::BeginPlay() {
 					UE_LOG(LogClass, Error, TEXT("Bootstrapping one or more functions for Tcl failed!"))
 				}
 				else {
-					interpreter = _Tcl_CreateInterp();
-					defineNil();
+					init();
 					UE_LOG(LogClass, Log, TEXT("Bootstrapping Tcl and its functions succeeded!"))
 				}
 			}
 		}
 		else { UE_LOG(LogClass, Error, TEXT("Cannot find %s for Tcl!"), _TCL_DLL_FNAME_) }
-	} else {
-		interpreter = _Tcl_CreateInterp();
-		defineNil();
-	}
+	} else { init(); }
 	
 }
 
 void UTclComponent::BeginDestroy() {
 	Super::BeginDestroy();
-	if(interpreter != nullptr) {
-		_Tcl_DeleteInterp(interpreter);
-	}
+	if(interpreter != nullptr) { _Tcl_DeleteInterp(interpreter); }
+
 }
 
 void UTclComponent::Tcl_FreeInternalRepProc(Tcl_Obj* obj) { }
@@ -177,21 +189,4 @@ int32 UTclComponent::Eval(FString Filename, FString Code) {
 	if (status == TCL_ERROR) { UE_LOG(LogClass, Error, TEXT("Tcl script error for! filepath: '%s' with code: '%s'!"), *fname, *Code) }
 	return status;
 
-}
-
-Tcl_Obj* UTclComponent::getresult() {
-	if (handleIsMissing() || interpreter == nullptr) { return _Tcl_NewObj(); } else {
-		auto result = _Tcl_GetObjResult(interpreter);
-		//FString fname = result->typePtr->name;
-		//UE_LOG(LogClass, Warning, TEXT("getresult: %s"), *fname)
-		return result;
-	}
-}
-int UTclComponent::setresult(Tcl_Obj* result) {
-	if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-		//FString fname = result->typePtr->name;
-		//UE_LOG(LogClass, Warning, TEXT("setresult: %s"), *fname)
-		_Tcl_SetObjResult(interpreter, result);
-		return TCL_OK;
-	}
 }

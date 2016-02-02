@@ -96,15 +96,7 @@ protected:
 
 	Tcl_Interp* interpreter = nullptr;
 
-	int defineNil() {
-		static const Tcl_ObjType type = { "NIL", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
-		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			auto val = _Tcl_NewObj();
-			val->typePtr = &type;
-			*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
-			return TCL_OK;
-		}
-	}
+	int init();
 
 	int eval(const char*);
 
@@ -161,10 +153,19 @@ public:
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			const char* fname = TCHAR_TO_ANSI(*name);
 			auto del = new TBaseDelegate<ReturnType, ParamTypes...>;
-			del->BindUFunction(self, TCHAR_TO_ANSI(*name));
+			del->BindUFunction(self, fname);
 			auto data = new WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>({ self, interpreter, name, del });
 			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<Cls, ReturnType, ParamTypes...>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>);
-			data = nullptr;
+			return TCL_OK;
+		}
+	}
+	template<typename ReturnType, typename ...ParamTypes> int bindstatic(ReturnType(*f)(ParamTypes...), FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			const char* fname = TCHAR_TO_ANSI(*name);
+			auto del = new TBaseDelegate<ReturnType, ParamTypes...>;
+			del->BindStatic(f);
+			auto data = new WrapperContainer<nullptr_t, TBaseDelegate<ReturnType, ParamTypes...>>({ nullptr, interpreter, name, del });
+			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<nullptr_t, ReturnType, ParamTypes...>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<nullptr_t, TBaseDelegate<ReturnType, ParamTypes...>>);
 			return TCL_OK;
 		}
 	}
@@ -187,9 +188,6 @@ public:
 			return TCL_OK;
 		}
 	}
-
-	Tcl_Obj* getresult();
-	int setresult(Tcl_Obj* result);
 
 	template<typename T, typename P> int addStructDeconstructor(FString name) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
@@ -546,13 +544,16 @@ template<typename Cls, typename ReturnType, typename ...ParamTypes> struct TCL_W
 		numberOfArgs--;  // proc is counted too
 		auto data = static_cast<WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>*>(clientData);
 		if (numberOfArgs != numberOfParams) {
-			UE_LOG(LogClass, Log, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
+			UE_LOG(LogClass, Error, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
 			return TCL_ERROR;
 		}
 		tuple<WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...> values;
 		get<0>(values) = data;
 		auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<WrapperContainer<Cls, TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
-		if(!ok) { return TCL_ERROR; }
+		if(!ok) {
+			UE_LOG(LogClass, Error, TEXT("Tcl: the offending proc's name is %d"), *(data->name))
+			return TCL_ERROR;
+		}
 		ok = apply(&COMPILE_DELEGATE_ON_PARAMS<ReturnType>::GO<Cls, ParamTypes...>, values);
 		return ok? TCL_OK : TCL_ERROR;
 	}
