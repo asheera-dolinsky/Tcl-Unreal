@@ -197,31 +197,6 @@ public:
 		}
 	}
 
-	template<typename T, typename P> int addStructDeconstructor(FString name) {
-		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			generalizedDeconstructor<P, UStructProperty, T>(name);
-			return TCL_OK;
-		}
-	}
-	template<typename T, typename P> int addObjectDeconstructor(FString name) {
-		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			generalizedDeconstructor<P, UObjectPropertyBase, T>(name);
-			return TCL_OK;
-		}
-	}
-	template<typename T> int addBooleanDeconstructor(FString name) {
-		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			generalizedDeconstructor<bool, UBoolProperty, T>(name);
-			return TCL_OK;
-		}
-	}
-	template<typename T, typename P> int addNumericDeconstructor(FString name) {
-		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			generalizedDeconstructor<P, UNumericProperty, T>(name);
-			return TCL_OK;
-		}
-	}
-
 	template<typename T> int define(FString Location, T* ptr, FString Key = "", int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) {
 		static const auto tname = std::is_base_of<UObject, T>::value? "UObject" : IS_TARRAY<T>::OF_UOBJECTS? "TArray of UObjects" : IS_TSUBCLASSOF<T>::OF_UOBJECTS? "TSubclassOf of UObjects" : typeid(T).name();
 		static const FString tnameconv = tname;
