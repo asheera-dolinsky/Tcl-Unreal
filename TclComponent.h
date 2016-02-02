@@ -94,6 +94,8 @@ protected:
 
 	Tcl_Interp* interpreter = nullptr;
 
+	Tcl_Obj* buffer = nullptr;
+
 	int init();
 
 	int eval(const char*);
@@ -139,6 +141,9 @@ public:
 	static void Tcl_DupInternalRepProc(Tcl_Obj*, Tcl_Obj*);
 	static void Tcl_UpdateStringProc(Tcl_Obj *obj);
 	static int Tcl_SetFromAnyProc(Tcl_Interp*, Tcl_Obj*);
+
+	void fill(Tcl_Obj*);
+	Tcl_Obj* purge();
 
 	template<typename D> static void freeWrapperContainer(ClientData clientData) {
 		auto data = static_cast<WrapperContainer<D>*>(clientData);
@@ -388,6 +393,13 @@ template<> struct IMPL_CONVERT<FString> {  // FString
 		return TCL_OK;
 	}
 };
+template<> struct IMPL_CONVERT<Tcl_Obj*> {  // Tcl_Obj*
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, Tcl_Obj** val) {
+		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		*val = obj;
+		return TCL_OK;
+	}
+};
 
 template<int idx> struct POPULATE {
 	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
@@ -503,6 +515,11 @@ template<> struct PROCESS_RETURN<FString> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, FString val) {
 		auto obj = NEW_OBJ<FString>::MAKE(interpreter, val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template<> struct PROCESS_RETURN<Tcl_Obj*> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, Tcl_Obj* val) {
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, val);
 	}
 };
 

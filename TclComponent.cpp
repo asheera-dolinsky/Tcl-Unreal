@@ -51,7 +51,16 @@ UTclComponent::UTclComponent(const FObjectInitializer& ObjectInitializer) : Supe
 
 }
 
-TSubclassOf<UObject> FindClass(FString Name) { return FindObjectSafe<UClass>(ANY_PACKAGE, *Name); }
+void UTclComponent::fill(Tcl_Obj* obj) {
+	buffer = obj;
+
+}
+Tcl_Obj* UTclComponent::purge() {
+	auto obj = buffer;
+	buffer = nullptr;
+	return obj;
+
+}
 
 int UTclComponent::init() {
 	static const Tcl_ObjType type = { "NIL", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
@@ -60,6 +69,8 @@ int UTclComponent::init() {
 	val->typePtr = &type;
 	*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
 	this->bindstatic<TSubclassOf<UObject>, FString>(&Library::FindClass, "FindClass");
+	this->bindmethod<UTclComponent, void, Tcl_Obj*>(this, &UTclComponent::fill, "Fill");
+	this->bindstatic<Tcl_Obj*, AActor*>(&Library::Purge, "Purge");
 	return TCL_OK;
 
 }
