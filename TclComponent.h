@@ -399,6 +399,13 @@ template<> struct IMPL_CONVERT<FString> {  // FString
 		return TCL_OK;
 	}
 };
+template<> struct IMPL_CONVERT<FName> {  // FName
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, FName* val) {
+		auto result = UTclComponent::get_Tcl_GetStringFromObj()(obj, nullptr);
+		*val = result;
+		return TCL_OK;
+	}
+};
 template<> struct IMPL_CONVERT<Tcl_Obj*> {  // Tcl_Obj*
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, Tcl_Obj** val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
@@ -472,6 +479,11 @@ template<> struct NEW_OBJ<float> {
 template<> struct NEW_OBJ<FString> {
 	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, FString val) {
 		return UTclComponent::get_Tcl_NewStringObj()(TCHAR_TO_ANSI(*val), -1);
+	}
+};
+template<> struct NEW_OBJ<FName> {
+	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, FName val) {
+		return UTclComponent::get_Tcl_NewStringObj()(TCHAR_TO_ANSI(*val.ToString()), -1);
 	}
 };
 

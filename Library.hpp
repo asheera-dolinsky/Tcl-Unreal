@@ -2,7 +2,7 @@ namespace Library {
 	TSubclassOf<UObject> FindClass(FString Name) { return FindObjectSafe<UClass>(ANY_PACKAGE, *Name); }
 	TArray<AActor*> AllActorsOf(UWorld* World, TSubclassOf<AActor> Cls) {
 		TArray<AActor*> actors;
-		if (Cls != nullptr) { UGameplayStatics::GetAllActorsOfClass(World, Cls, actors); }
+		if (!(World == nullptr || Cls == nullptr)) { UGameplayStatics::GetAllActorsOfClass(World, Cls, actors); }
 		return actors;
 
 	}
