@@ -33,6 +33,7 @@
 #include "Api.hpp"
 #include "TupleUtils.hpp"
 #include "Components/ActorComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "TclComponent.generated.h"
 
 
@@ -144,6 +145,7 @@ public:
 
 	void Fill(Tcl_Obj*);
 	Tcl_Obj* Purge();
+	void Convert(TArray<UObject*>);
 
 	template<typename D> static void freeWrapperContainer(ClientData clientData) {
 		auto data = static_cast<WrapperContainer<D>*>(clientData);
@@ -157,7 +159,7 @@ public:
 			const char* fname = TCHAR_TO_ANSI(*name);
 			auto del = new TBaseDelegate<ReturnType, ParamTypes...>;
 			del->BindUFunction(self, fname);
-			auto data = new WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>({ interpreter, name, del });
+			auto data = new WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>({ interpreter, tclname.IsEmpty()? name : tclname, del });
 			_Tcl_CreateObjCommand(interpreter, tclname.IsEmpty()? fname : TCHAR_TO_ANSI(*tclname), &TCL_WRAPPER<ReturnType, ParamTypes...>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>);
 			return TCL_OK;
 		}
@@ -173,6 +175,16 @@ public:
 		}
 	}
 	template<typename Cls, typename ReturnType, typename ...ParamTypes> int bindmethod(Cls* self, ReturnType(Cls::*f)(ParamTypes...), FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			const char* fname = TCHAR_TO_ANSI(*name);
+			auto del = new TBaseDelegate<ReturnType, ParamTypes...>;
+			del->BindUObject(self, f);
+			auto data = new WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>({ interpreter, name, del });
+			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<ReturnType, ParamTypes...>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>);
+			return TCL_OK;
+		}
+	}
+	template<typename Cls, typename ReturnType, typename ...ParamTypes> int bindconstmethod(Cls* self, ReturnType(Cls::*f)(ParamTypes...) const, FString name) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			const char* fname = TCHAR_TO_ANSI(*name);
 			auto del = new TBaseDelegate<ReturnType, ParamTypes...>;
@@ -220,9 +232,6 @@ public:
 			return TCL_OK;
 		}
 	}
-
-	void AllActorsOf(TSubclassOf<AActor>);
-	void Convert(TArray<UObject*>);
 
 	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 Eval(FString Filename, FString Code);
@@ -292,7 +301,6 @@ template<typename T> struct IMPL_CONVERT {  // UStruct, TArray<T>, TSubclassOf<T
 	}
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T* val) {
 		static const FString desiredType = typeid(T).name();
-		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		if (obj == nullptr || obj->typePtr == nullptr) {
 			UE_LOG(LogClass, Error, TEXT("Tcl error! Tcl_Obj* or its typePtr is a nullptr. It should be of type or subtype: '%s'."), *desiredType)
 			return TCL_ERROR;
@@ -335,7 +343,6 @@ template<typename T> struct IMPL_CONVERT<T*> {  // Pointers
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val) {
 		static const FString nilName = "NIL";
 		static const FString desiredType = typeid(T).name();
-		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		if (obj == nullptr || obj->typePtr == nullptr) {
 			UE_LOG(LogClass, Error, TEXT("Tcl error! Tcl_Obj* or its typePtr is a nullptr. It should be of type or subtype: '%s'."), *desiredType)
 			return TCL_ERROR;
@@ -354,7 +361,6 @@ template<typename T> struct IMPL_CONVERT<T*> {  // Pointers
 };
 template<> struct IMPL_CONVERT<bool> {  // bool
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, bool* val) {
-		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		int in = 0;
 		auto result = UTclComponent::get_Tcl_GetBooleanFromObj()(interpreter, obj, &in);
 		*val = !!in;
@@ -363,7 +369,6 @@ template<> struct IMPL_CONVERT<bool> {  // bool
 };
 template<> struct IMPL_CONVERT<int32> {  // int32
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int32* val) {
-		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		long in = 0;
 		auto result = UTclComponent::get_Tcl_GetLongFromObj()(interpreter, obj, &in);
 		*val = static_cast<int32>(in);
@@ -381,7 +386,6 @@ template<> struct IMPL_CONVERT<int64> {  // int64
 };
 template<> struct IMPL_CONVERT<float> {  // float
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, float* val) {
-		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		double in = 0.0;
 		auto result = UTclComponent::get_Tcl_GetDoubleFromObj()(interpreter, obj, &in);
 		*val = static_cast<float>(in);
@@ -390,7 +394,6 @@ template<> struct IMPL_CONVERT<float> {  // float
 };
 template<> struct IMPL_CONVERT<FString> {  // FString
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, FString* val) {
-		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		auto result = UTclComponent::get_Tcl_GetStringFromObj()(obj, nullptr);
 		*val = result;
 		return TCL_OK;

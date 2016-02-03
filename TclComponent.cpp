@@ -64,6 +64,8 @@ Tcl_Obj* UTclComponent::Purge() {
 
 }
 
+void UTclComponent::Convert(TArray<UObject*> Arr) { this->convert(Arr); }
+
 int UTclComponent::init() {
 	static const Tcl_ObjType type = { "NIL", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
 	interpreter = _Tcl_CreateInterp();
@@ -74,8 +76,13 @@ int UTclComponent::init() {
 	this->bindstatic<Tcl_Obj*, AActor*>(&Library::Purge, "Purge");
 	this->bindstatic<int32, AActor*, FString, FString>(&Library::Eval, "Eval");
 	this->bindstatic<TSubclassOf<UObject>, FString>(&Library::FindClass, "FindClass");
-	this->bindmethod<UTclComponent, void, TSubclassOf<AActor>>(this, &UTclComponent::AllActorsOf, "AllActorsOf");
+	this->bindstatic<TArray<AActor*>, UWorld*, TSubclassOf<AActor>>(&Library::AllActorsOf, "AllActorsOf");
 	this->bindmethod<UTclComponent, void, TArray<UObject*>>(this, &UTclComponent::Convert, "Convert");
+	this->bindstatic<FVector, FVector, FVector>(&Library::ADD<FVector>::CONCRETE, "AddVectors");
+	this->bindstatic<FVector, float>(&Library::MAKE<FVector, float>::CONCRETE, "MakeVector");
+	this->bindstatic<FLinearColor, float, float, float, float>(&Library::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
+	this->bindconstmethod<UTclComponent, UWorld*>(this, &UTclComponent::GetWorld, "GetWorld");
+	this->bindstatic<void, UObject*, FVector, FVector, FLinearColor, float, float>(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
 	return TCL_OK;
 
 }
@@ -199,12 +206,3 @@ int32 UTclComponent::Eval(FString Filename, FString Code) {
 	return status;
 
 }
-
-void UTclComponent::AllActorsOf(TSubclassOf<AActor> Cls) {
-	TArray<AActor*> actors;
-	if (Cls != nullptr) { UGameplayStatics::GetAllActorsOfClass(GetWorld(), Cls, actors); }
-	this->convert(actors);
-
-}
-
-void UTclComponent::Convert(TArray<UObject*> Arr) { this->convert(Arr); }
