@@ -101,23 +101,12 @@ protected:
 
 	int eval(const char*);
 
-	template<typename Last> void collect(TArray<Tcl_Obj*>* collector, Last head) {
-		collector->Add(NEW_OBJ<Last>::MAKE(interpreter, head));
+	template<typename Last> FORCEINLINE static void collect(TArray<Tcl_Obj*>* collector, Last head) {
+		collector->Add(NEW_OBJ<Last>::MAKE(head));
 	}
-	template<typename First, typename... Rest> void collect(TArray<Tcl_Obj*>* collector, First head, Rest... tail) {
-		collector->Add(NEW_OBJ<First>::MAKE(interpreter, head));
+	template<typename First, typename... Rest> FORCEINLINE static void collect(TArray<Tcl_Obj*>* collector, First head, Rest... tail) {
+		collector->Add(NEW_OBJ<First>::MAKE(head));
 		collect<Rest...>(collector, tail...);
-	}
-
-	template<typename P> Tcl_Obj* tarrayToList(TArray<P> arr) {
-		const auto len = arr.Num();
-		auto objs = new Tcl_Obj*[len];
-		for(int i = 0; i < len; i++) {
-			objs[i] = NEW_OBJ<P>::MAKE(interpreter, arr[i]);
-		}
-		auto result = _Tcl_NewListObj(len, static_cast<ClientData>(objs));
-		delete[] objs;
-		return result;
 	}
 public:	
 	UTclComponent();
@@ -145,7 +134,7 @@ public:
 
 	void Fill(Tcl_Obj*);
 	Tcl_Obj* Purge();
-	void Convert(TArray<UObject*>);
+	static Tcl_Obj* Convert(TArray<UObject*>);
 
 	template<typename D> static void freeWrapperContainer(ClientData clientData) {
 		auto data = static_cast<WrapperContainer<D>*>(clientData);
@@ -153,6 +142,30 @@ public:
 		delete data;
 		data = nullptr; 
 	}
+
+	template<typename ...ParamTypes> static Tcl_Obj* pack(ParamTypes... args) {
+		if (handleIsMissing()) { return nullptr; } else {
+			TArray<Tcl_Obj*> collector;
+			collect<ParamTypes...>(&collector, args...);
+			const auto len = sizeof...(ParamTypes);
+			const Tcl_Obj* arguments[len];
+			for(int i = 0; i < len; i++) { arguments[i] = collector[i]; }
+			return _Tcl_NewListObj(len, static_cast<ClientData>(arguments));
+		}
+	}
+	template<typename P> static Tcl_Obj* convert(TArray<P> arr) {
+		if (handleIsMissing()) { return nullptr; } else {
+			const auto len = arr.Num();
+			auto objs = new Tcl_Obj*[len];
+			for(int i = 0; i < len; i++) {
+				objs[i] = NEW_OBJ<P>::MAKE(arr[i]);
+			}
+			auto result = _Tcl_NewListObj(len, static_cast<ClientData>(objs));
+			delete[] objs;
+			return result;
+		}
+	}
+
 	
 	template<typename Cls, typename ReturnType, typename ...ParamTypes> int bind(Cls* self, FString name, FString tclname = "") {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
@@ -191,25 +204,6 @@ public:
 			del->BindUObject(self, f);
 			auto data = new WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>({ interpreter, name, del });
 			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<ReturnType, ParamTypes...>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>);
-			return TCL_OK;
-		}
-	}
-
-	template<typename ...ParamTypes> int pack(ParamTypes... args) {
-		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			TArray<Tcl_Obj*> collector;
-			collect<ParamTypes...>(&collector, args...);
-			const auto len = sizeof...(ParamTypes);
-			const Tcl_Obj* arguments[len];
-			for(int i = 0; i < len; i++) { arguments[i] = collector[i]; }
-			_Tcl_SetObjResult(interpreter, _Tcl_NewListObj(len, static_cast<ClientData>(arguments)));
-			return TCL_OK;
-		}
-	}
-
-	template<typename P> int convert(TArray<P> arr) {
-		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			_Tcl_SetObjResult(interpreter, tarrayToList(arr));
 			return TCL_OK;
 		}
 	}
@@ -409,6 +403,7 @@ template<> struct IMPL_CONVERT<FName> {  // FName
 template<> struct IMPL_CONVERT<Tcl_Obj*> {  // Tcl_Obj*
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, Tcl_Obj** val) {
 		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		if (obj == nullptr) { obj = UTclComponent::get_Tcl_NewObj()(); }
 		*val = obj;
 		return TCL_OK;
 	}
@@ -427,7 +422,7 @@ template<> struct POPULATE<0> {
 };
 
 template<typename T> struct NEW_OBJ {
-	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, T val) {
+	FORCEINLINE static Tcl_Obj* MAKE(T val) {
 		static const auto cleanUpFunc = [](Tcl_Obj* obj) -> void {
 				auto ptr = static_cast<T*>(obj->internalRep.otherValuePtr);
 				FString tname = obj->typePtr->name;
@@ -443,7 +438,7 @@ template<typename T> struct NEW_OBJ {
 	}
 };
 template<typename T> struct NEW_OBJ<T*> {
-	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, T* val) {
+	FORCEINLINE static Tcl_Obj* MAKE(T* val) {
 		static const Tcl_ObjType type = { std::is_base_of<UObject, T>::value? "UObject" : typeid(T).name(), &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
 		auto obj = UTclComponent::get_Tcl_NewObj()();
 		obj->internalRep.otherValuePtr = static_cast<ClientData>(val);
@@ -452,91 +447,92 @@ template<typename T> struct NEW_OBJ<T*> {
 	}
 };
 template<> struct NEW_OBJ<bool> {
-	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, bool val) {
+	FORCEINLINE static Tcl_Obj* MAKE(bool val) {
 		return UTclComponent::get_Tcl_NewBooleanObj()(val);
 	}
 };
 template<> struct NEW_OBJ<int32> {
-	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, int32 val) {
+	FORCEINLINE static Tcl_Obj* MAKE(int32 val) {
 		return UTclComponent::get_Tcl_NewLongObj()(val);
 	}
 };
 template<> struct NEW_OBJ<uint32> {
-	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, uint32 val) {
+	FORCEINLINE static Tcl_Obj* MAKE(uint32 val) {
 		return UTclComponent::get_Tcl_NewLongObj()(val);
 	}
 };
 template<> struct NEW_OBJ<int64> {
-	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, int64 val) {
+	FORCEINLINE static Tcl_Obj* MAKE(int64 val) {
 		return UTclComponent::get_Tcl_NewLongObj()(val);
 	}
 };
 template<> struct NEW_OBJ<float> {
-	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, float val) {
+	FORCEINLINE static Tcl_Obj* MAKE(float val) {
 		return UTclComponent::get_Tcl_NewDoubleObj()(val);
 	}
 };
 template<> struct NEW_OBJ<FString> {
-	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, FString val) {
+	FORCEINLINE static Tcl_Obj* MAKE(FString val) {
 		return UTclComponent::get_Tcl_NewStringObj()(TCHAR_TO_ANSI(*val), -1);
 	}
 };
 template<> struct NEW_OBJ<FName> {
-	FORCEINLINE static Tcl_Obj* MAKE(Tcl_Interp* interpreter, FName val) {
+	FORCEINLINE static Tcl_Obj* MAKE(FName val) {
 		return UTclComponent::get_Tcl_NewStringObj()(TCHAR_TO_ANSI(*val.ToString()), -1);
 	}
 };
 
 template<typename T> struct PROCESS_RETURN {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, T val) {
-		auto obj = NEW_OBJ<T>::MAKE(interpreter, val);
+		auto obj = NEW_OBJ<T>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<typename T> struct PROCESS_RETURN<T*> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, T* val) {
-		auto obj = NEW_OBJ<T*>::MAKE(interpreter, val);
+		auto obj = NEW_OBJ<T*>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<bool> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, bool val) {
-		auto obj = NEW_OBJ<bool>::MAKE(interpreter, val);
+		auto obj = NEW_OBJ<bool>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<int32> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, int32 val) {
-		auto obj = NEW_OBJ<int32>::MAKE(interpreter, val);
+		auto obj = NEW_OBJ<int32>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<uint32> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, uint32 val) {
-		auto obj = NEW_OBJ<uint32>::MAKE(interpreter, val);
+		auto obj = NEW_OBJ<uint32>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<int64> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, int64 val) {
-		auto obj = NEW_OBJ<int64>::MAKE(interpreter, val);
+		auto obj = NEW_OBJ<int64>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<float> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, float val) {
-		auto obj = NEW_OBJ<float>::MAKE(interpreter, val);
+		auto obj = NEW_OBJ<float>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<FString> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, FString val) {
-		auto obj = NEW_OBJ<FString>::MAKE(interpreter, val);
+		auto obj = NEW_OBJ<FString>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<Tcl_Obj*> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, Tcl_Obj* val) {
+		if (val == nullptr) { val = UTclComponent::get_Tcl_NewObj()(); }
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, val);
 	}
 };

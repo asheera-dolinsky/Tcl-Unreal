@@ -64,7 +64,7 @@ Tcl_Obj* UTclComponent::Purge() {
 
 }
 
-void UTclComponent::Convert(TArray<UObject*> Arr) { this->convert(Arr); }
+Tcl_Obj* UTclComponent::Convert(TArray<UObject*> Arr) { return UTclComponent::convert(Arr); }
 
 int UTclComponent::init() {
 	static const Tcl_ObjType type = { "NIL", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
@@ -77,7 +77,7 @@ int UTclComponent::init() {
 	this->bindstatic<int32, AActor*, FString, FString>(&Library::Eval, "Eval");
 	this->bindstatic<TSubclassOf<UObject>, FString>(&Library::FindClass, "FindClass");
 	this->bindstatic<TArray<AActor*>, UWorld*, TSubclassOf<AActor>>(&Library::AllActorsOf, "AllActorsOf");
-	this->bindmethod<UTclComponent, void, TArray<UObject*>>(this, &UTclComponent::Convert, "Convert");
+	this->bindstatic<Tcl_Obj*, TArray<UObject*>>(&UTclComponent::Convert, "Convert");
 	this->bindstatic<FVector, FVector, FVector>(&Library::ADD<FVector>::CONCRETE, "AddVectors");
 	this->bindstatic<FVector, float>(&Library::MAKE<FVector, float>::CONCRETE, "MakeVector");
 	this->bindstatic<FLinearColor, float, float, float, float>(&Library::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
