@@ -24,7 +24,7 @@
 
 #include "PhantomGunsDemo.h"
 #include "TclComponent.h"
-#include "Library.hpp"
+#include "Essentials.hpp"
 
 
 void* UTclComponent::handle = nullptr;
@@ -72,16 +72,16 @@ int UTclComponent::init() {
 	auto val = _Tcl_NewObj();
 	val->typePtr = &type;
 	*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
+	this->bindstatic<int32, AActor*, FString, FString>(&TclUnrealEssentials::Eval, "Eval");
 	this->bindmethod<UTclComponent, void, Tcl_Obj*>(this, &UTclComponent::Fill, "Fill");
-	this->bindstatic<Tcl_Obj*, AActor*>(&Library::Purge, "Purge");
-	this->bindstatic<int32, AActor*, FString, FString>(&Library::Eval, "Eval");
-	this->bindstatic<TSubclassOf<UObject>, FString>(&Library::FindClass, "FindClass");
-	this->bindstatic<TArray<AActor*>, UWorld*, TSubclassOf<AActor>>(&Library::AllActorsOf, "AllActorsOf");
+	this->bindstatic<Tcl_Obj*, AActor*>(&TclUnrealEssentials::Purge, "Purge");
 	this->bindstatic<Tcl_Obj*, TArray<UObject*>>(&UTclComponent::Convert, "Convert");
-	this->bindstatic<FVector, FVector, FVector>(&Library::ADD<FVector>::CONCRETE, "AddVectors");
-	this->bindstatic<FVector, float>(&Library::MAKE<FVector, float>::CONCRETE, "MakeVector");
-	this->bindstatic<FLinearColor, float, float, float, float>(&Library::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
 	this->bindconstmethod<UTclComponent, UWorld*>(this, &UTclComponent::GetWorld, "GetWorld");
+	this->bindstatic<TSubclassOf<UObject>, FString>(&TclUnrealEssentials::FindClass, "FindClass");
+	this->bindstatic<TArray<AActor*>, UWorld*, TSubclassOf<AActor>>(&TclUnrealEssentials::AllActorsOf, "AllActorsOf");
+	this->bindstatic<FVector, float>(&TclUnrealEssentials::MAKE<FVector, float>::CONCRETE, "MakeVector");
+	this->bindstatic<FVector, FVector, FVector>(&TclUnrealEssentials::ADD<FVector>::CONCRETE, "AddVectors");
+	this->bindstatic<FLinearColor, float, float, float, float>(&TclUnrealEssentials::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
 	this->bindstatic<void, UObject*, FVector, FVector, FLinearColor, float, float>(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
 	return TCL_OK;
 
