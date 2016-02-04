@@ -31,6 +31,6 @@ UCLASS()
 class UTclUnrealOptionals : public UBlueprintFunctionLibrary {
   GENERATED_UCLASS_BODY()
 public:
-	static Tcl_Obj* GetCursorHit(UWorld* World, TArray<TEnumAsByte<EObjectTypeQuery>> Types, bool TraceComplex);
+	static Tcl_Obj* GetCursorHit(APlayerController* PlayerController, TArray<TEnumAsByte<EObjectTypeQuery>> Types, bool TraceComplex);
 
 };

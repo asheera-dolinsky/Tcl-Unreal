@@ -77,10 +77,12 @@ int UTclComponent::init() {
 	this->bindstatic<Tcl_Obj*, AActor*>(&TclUnrealEssentials::Purge, "Purge");
 	this->bindstatic<Tcl_Obj*, TArray<UObject*>>(&UTclComponent::Convert, "Convert");
 	this->bindconstmethod<UTclComponent, UWorld*>(this, &UTclComponent::GetWorld, "GetWorld");
+	this->bindstatic<APlayerController*, UObject*, int32>(&UGameplayStatics::GetPlayerController, "GetPlayerController");
 	this->bindstatic<TSubclassOf<UObject>, FString>(&TclUnrealEssentials::FindClass, "FindClass");
 	this->bindstatic<TArray<AActor*>, UWorld*, TSubclassOf<AActor>>(&TclUnrealEssentials::AllActorsOf, "AllActorsOf");
-	this->bindstatic<FVector, float>(&TclUnrealEssentials::MAKE<FVector, float>::CONCRETE, "MakeVector");
+	this->bindstatic<FVector, float, float, float>(&TclUnrealEssentials::MAKE<FVector, float, float, float>::CONCRETE, "MakeVector");
 	this->bindstatic<FVector, FVector, FVector>(&TclUnrealEssentials::ADD<FVector>::CONCRETE, "AddVectors");
+	this->bindstatic<FRotator, float, float, float>(&TclUnrealEssentials::MAKE<FRotator, float, float, float>::CONCRETE, "MakeRotator");
 	this->bindstatic<FLinearColor, float, float, float, float>(&TclUnrealEssentials::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
 	this->bindstatic<void, UObject*, FVector, FVector, FLinearColor, float, float>(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
 	return TCL_OK;

@@ -30,11 +30,11 @@ UTclUnrealOptionals::UTclUnrealOptionals(const FObjectInitializer& ObjectInitial
 
 }
 
-Tcl_Obj* UTclUnrealOptionals::GetCursorHit(UWorld* World, TArray<TEnumAsByte<EObjectTypeQuery>> Types, bool TraceComplex) {
+Tcl_Obj* UTclUnrealOptionals::GetCursorHit(APlayerController* PlayerController, TArray<TEnumAsByte<EObjectTypeQuery>> Types, bool TraceComplex) {
 	FHitResult out;
-	auto ImpactPoint = FVector(0.f);
-	auto HitSuccess = (World != nullptr) && (World->GetFirstPlayerController() != nullptr) && World->GetFirstPlayerController()->GetHitResultUnderCursorForObjects(Types, TraceComplex, out);
-	if (HitSuccess) { ImpactPoint = out.ImpactPoint; }
-	return UTclComponent::pack<bool, FVector>(HitSuccess, ImpactPoint);
+	auto impactPoint = FVector(0.f);
+	auto hitSuccess = PlayerController != nullptr && PlayerController->GetHitResultUnderCursorForObjects(Types, TraceComplex, out);
+	if (hitSuccess) { impactPoint = out.ImpactPoint; }
+	return UTclComponent::pack<bool, FVector>(hitSuccess, impactPoint);
 
 }
