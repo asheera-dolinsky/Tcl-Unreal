@@ -86,8 +86,8 @@ int UTclComponent::init() {
 	this->bindstatic<FLinearColor, float, float, float, float>(&UTclUnrealEssentials::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
 	this->bindstatic<void, UObject*, FVector, FVector, FLinearColor, float, float>(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
 
-	//GENERAL_ACCESSOR
 	this->bindstatic<float, UObject*, TSubclassOf<UObject>, FString>(&UTclUnrealEssentials::GENERAL_ACCESSOR<float>::CONCRETE, "AccessFloat");
+	this->bindstatic<void, UObject*, TSubclassOf<UObject>, FString, float>(&UTclUnrealEssentials::GENERAL_MUTATOR<float>::CONCRETE, "MutateFloat");
 	return TCL_OK;
 
 }

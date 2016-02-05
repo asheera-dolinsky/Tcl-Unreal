@@ -46,6 +46,21 @@ private:
 			return result;
 		}
 	};
+
+	template<typename ReturnType> struct SPECIALIZED_MUTATOR {
+		//kept empty to raise a compile time error if not used with a proper type
+	};
+	template<> struct SPECIALIZED_MUTATOR<float> {
+		FORCEINLINE static void ENGAGE(UObject* self, UProperty* prop, float val) {  // no need to check for prop nullptr, already done in GENERAL_MUTATOR
+			if(self != nullptr) {
+				auto cast = Cast<UNumericProperty>(prop);
+				if (cast != nullptr && cast->IsFloatingPoint()) {
+					auto valPtr = prop->ContainerPtrToValuePtr<void>(self);
+					cast->SetFloatingPointPropertyValue(valPtr, val);
+				}
+			}
+		}
+	};
 public:
 	static TSubclassOf<UObject> FindClass(FString);
 	static TArray<AActor*> AllActorsOf(UWorld*, TSubclassOf<AActor>);
@@ -65,14 +80,20 @@ public:
 			if(cls != nullptr) {
 				for (TFieldIterator<UProperty> propIt(cls); propIt; ++propIt) {
 					auto prop = *propIt;
-					if(prop != nullptr) { UE_LOG(LogClass, Warning, TEXT("Reflections test %s"), *(prop->GetNameCPP())) }
-					if(prop != nullptr && prop->GetNameCPP() == name) {
-						UE_LOG(LogClass, Warning, TEXT("Reflections test2 %d"), self == nullptr)
-						return SPECIALIZED_ACCESSOR<ReturnType>::ENGAGE(self, prop);
-					}
+					if(prop != nullptr && prop->GetNameCPP() == name) { return SPECIALIZED_ACCESSOR<ReturnType>::ENGAGE(self, prop); }
 				}
 			}
 			return SPECIALIZED_ACCESSOR<ReturnType>::ENGAGE(nullptr, nullptr);
+		}
+	};
+	template<typename T> struct GENERAL_MUTATOR {
+		FORCEINLINE static void CONCRETE(UObject* self, TSubclassOf<UObject> cls, FString name, T val) {
+			if(cls != nullptr) {
+				for (TFieldIterator<UProperty> propIt(cls); propIt; ++propIt) {
+					auto prop = *propIt;
+					if(prop != nullptr && prop->GetNameCPP() == name) { return SPECIALIZED_MUTATOR<T>::ENGAGE(self, prop, val); }
+				}
+			}
 		}
 	};
 
