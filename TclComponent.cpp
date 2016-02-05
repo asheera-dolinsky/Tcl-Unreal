@@ -24,7 +24,6 @@
 
 #include "PhantomGunsDemo.h"
 #include "TclComponent.h"
-#include "Essentials.hpp"
 
 
 void* UTclComponent::handle = nullptr;
@@ -72,19 +71,23 @@ int UTclComponent::init() {
 	auto val = _Tcl_NewObj();
 	val->typePtr = &type;
 	*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
-	this->bindstatic<int32, AActor*, FString, FString>(&TclUnrealEssentials::Eval, "Eval");
+	this->bindstatic<int32, AActor*, FString, FString>(&UTclUnrealEssentials::Eval, "Eval");
 	this->bindmethod<UTclComponent, void, Tcl_Obj*>(this, &UTclComponent::Fill, "Fill");
-	this->bindstatic<Tcl_Obj*, AActor*>(&TclUnrealEssentials::Purge, "Purge");
+	this->bindstatic<Tcl_Obj*, AActor*>(&UTclUnrealEssentials::Purge, "Purge");
 	this->bindstatic<Tcl_Obj*, TArray<UObject*>>(&UTclComponent::Convert, "Convert");
 	this->bindconstmethod<UTclComponent, UWorld*>(this, &UTclComponent::GetWorld, "GetWorld");
 	this->bindstatic<APlayerController*, UObject*, int32>(&UGameplayStatics::GetPlayerController, "GetPlayerController");
-	this->bindstatic<TSubclassOf<UObject>, FString>(&TclUnrealEssentials::FindClass, "FindClass");
-	this->bindstatic<TArray<AActor*>, UWorld*, TSubclassOf<AActor>>(&TclUnrealEssentials::AllActorsOf, "AllActorsOf");
-	this->bindstatic<FVector, float, float, float>(&TclUnrealEssentials::MAKE<FVector, float, float, float>::CONCRETE, "MakeVector");
-	this->bindstatic<FVector, FVector, FVector>(&TclUnrealEssentials::ADD<FVector>::CONCRETE, "AddVectors");
-	this->bindstatic<FRotator, float, float, float>(&TclUnrealEssentials::MAKE<FRotator, float, float, float>::CONCRETE, "MakeRotator");
-	this->bindstatic<FLinearColor, float, float, float, float>(&TclUnrealEssentials::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
+	this->bindstatic<TSubclassOf<UObject>, FString>(&UTclUnrealEssentials::FindClass, "FindClass");
+	this->bindstatic<TArray<AActor*>, UWorld*, TSubclassOf<AActor>>(&UTclUnrealEssentials::AllActorsOf, "AllActorsOf");
+	this->bindstatic<UActorComponent*, AActor*, TSubclassOf<UActorComponent>>(&UTclUnrealEssentials::FindComponentOf, "FindComponentOf");
+	this->bindstatic<FVector, float, float, float>(&UTclUnrealEssentials::MAKE<FVector, float, float, float>::CONCRETE, "MakeVector");
+	this->bindstatic<FVector, FVector, FVector>(&UTclUnrealEssentials::ADD<FVector>::CONCRETE, "AddVectors");
+	this->bindstatic<FRotator, float, float, float>(&UTclUnrealEssentials::MAKE<FRotator, float, float, float>::CONCRETE, "MakeRotator");
+	this->bindstatic<FLinearColor, float, float, float, float>(&UTclUnrealEssentials::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
 	this->bindstatic<void, UObject*, FVector, FVector, FLinearColor, float, float>(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
+
+	//GENERAL_ACCESSOR
+	this->bindstatic<float, UObject*, TSubclassOf<UObject>, FString>(&UTclUnrealEssentials::GENERAL_ACCESSOR<float>::CONCRETE, "AccessFloat");
 	return TCL_OK;
 
 }

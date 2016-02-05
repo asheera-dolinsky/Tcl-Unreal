@@ -34,6 +34,7 @@
 #include "TupleUtils.hpp"
 #include "Components/ActorComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "TclUnrealEssentials.h"
 #include "TclComponent.generated.h"
 
 
@@ -369,12 +370,27 @@ template<> struct IMPL_CONVERT<int32> {  // int32
 		return result;
 	}
 };
+template<> struct IMPL_CONVERT<uint32> {  // int32
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, uint32* val) {
+		long in = 0;
+		auto result = UTclComponent::get_Tcl_GetLongFromObj()(interpreter, obj, &in);
+		*val = static_cast<uint32>(in);
+		return result;
+	}
+};
 template<> struct IMPL_CONVERT<int64> {  // int64
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int32* val) {
-		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		long in = 0;
 		auto result = UTclComponent::get_Tcl_GetLongFromObj()(interpreter, obj, &in);
 		*val = static_cast<int64>(in);
+		return result;
+	}
+};
+template<> struct IMPL_CONVERT<uint64> {  // int64
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, uint64* val) {
+		long in = 0;
+		auto result = UTclComponent::get_Tcl_GetLongFromObj()(interpreter, obj, &in);
+		*val = static_cast<uint64>(in);
 		return result;
 	}
 };
@@ -402,7 +418,6 @@ template<> struct IMPL_CONVERT<FName> {  // FName
 };
 template<> struct IMPL_CONVERT<Tcl_Obj*> {  // Tcl_Obj*
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, Tcl_Obj** val) {
-		if (UTclComponent::handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		if (obj == nullptr) { obj = UTclComponent::get_Tcl_NewObj()(); }
 		*val = obj;
 		return TCL_OK;
@@ -463,6 +478,11 @@ template<> struct NEW_OBJ<uint32> {
 };
 template<> struct NEW_OBJ<int64> {
 	FORCEINLINE static Tcl_Obj* MAKE(int64 val) {
+		return UTclComponent::get_Tcl_NewLongObj()(val);
+	}
+};
+template<> struct NEW_OBJ<uint64> {
+	FORCEINLINE static Tcl_Obj* MAKE(uint64 val) {
 		return UTclComponent::get_Tcl_NewLongObj()(val);
 	}
 };
