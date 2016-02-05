@@ -76,10 +76,12 @@ public:
 	};
 
 	template<typename ReturnType> struct GENERAL_ACCESSOR {
-		FORCEINLINE static ReturnType CONCRETE(UObject* self, TSubclassOf<UObject> cls, FString name) {
-			if(cls != nullptr) {
+		FORCEINLINE static ReturnType CONCRETE(UObject* self, FString name) {
+			TSubclassOf<UObject> cls = self == nullptr? nullptr : self->GetClass();
+			if(cls != nullptr && cls->IsValidLowLevel()) {
 				for (TFieldIterator<UProperty> propIt(cls); propIt; ++propIt) {
 					auto prop = *propIt;
+					if(prop != nullptr) { UE_LOG(LogClass, Warning, TEXT("ACCESSOR test %s"), *(prop->GetNameCPP())) }
 					if(prop != nullptr && prop->GetNameCPP() == name) { return SPECIALIZED_ACCESSOR<ReturnType>::ENGAGE(self, prop); }
 				}
 			}
@@ -87,10 +89,12 @@ public:
 		}
 	};
 	template<typename T> struct GENERAL_MUTATOR {
-		FORCEINLINE static void CONCRETE(UObject* self, TSubclassOf<UObject> cls, FString name, T val) {
-			if(cls != nullptr) {
+		FORCEINLINE static void CONCRETE(UObject* self, FString name, T val) {
+			TSubclassOf<UObject> cls = self == nullptr? nullptr : self->GetClass();
+			if(cls != nullptr && cls->IsValidLowLevel()) {
 				for (TFieldIterator<UProperty> propIt(cls); propIt; ++propIt) {
 					auto prop = *propIt;
+					if(prop != nullptr) { UE_LOG(LogClass, Warning, TEXT("MUTATOR test %s"), *(prop->GetNameCPP())) }
 					if(prop != nullptr && prop->GetNameCPP() == name) { return SPECIALIZED_MUTATOR<T>::ENGAGE(self, prop, val); }
 				}
 			}

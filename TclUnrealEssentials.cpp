@@ -30,7 +30,11 @@ UTclUnrealEssentials::UTclUnrealEssentials(const FObjectInitializer& ObjectIniti
 
 }
 
-TSubclassOf<UObject> UTclUnrealEssentials::FindClass(FString Name) { return FindObjectSafe<UClass>(ANY_PACKAGE, *Name); }
+TSubclassOf<UObject> UTclUnrealEssentials::FindClass(FString Name) {
+	auto cls = FindObjectSafe<UClass>(ANY_PACKAGE, *Name);
+	if(cls == nullptr || !cls->IsValidLowLevel()) { UE_LOG(LogClass, Warning, TEXT("Tcl warning: a class could not be found by the name of %s"), *Name) }
+	return cls;
+}
 TArray<AActor*> UTclUnrealEssentials::AllActorsOf(UWorld* World, TSubclassOf<AActor> Cls) {
 	TArray<AActor*> actors;
 	if (!(World == nullptr || Cls == nullptr)) { UGameplayStatics::GetAllActorsOfClass(World, Cls, actors); }
