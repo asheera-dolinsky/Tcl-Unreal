@@ -34,16 +34,18 @@ private:
 		//kept empty to raise a compile time error if not used with a proper type
 	};
 	template<> struct SPECIALIZED_ACCESSOR<float> {
-		FORCEINLINE static float ENGAGE(UObject* self, UProperty* prop) {  // no need to check for prop nullptr, already done in GENERAL_ACCESSOR
+		FORCEINLINE static TTuple<bool, float> ENGAGE(UObject* self, UProperty* prop) {  // no need to check for prop nullptr, already done in GENERAL_ACCESSOR
 			auto result = 0.f;
+			auto success = false;
 			if(self != nullptr) {
 				auto cast = Cast<UNumericProperty>(prop);
-				if (cast != nullptr && cast->IsFloatingPoint()) {
+				success = cast != nullptr && cast->IsFloatingPoint();
+				if (success) {
 					auto valPtr = prop->ContainerPtrToValuePtr<void>(self);
 					result = cast->GetFloatingPointPropertyValue(valPtr);
 				}
 			}
-			return result;
+			return TTuple<bool, float>(success, result);
 		}
 	};
 
@@ -51,14 +53,17 @@ private:
 		//kept empty to raise a compile time error if not used with a proper type
 	};
 	template<> struct SPECIALIZED_MUTATOR<float> {
-		FORCEINLINE static void ENGAGE(UObject* self, UProperty* prop, float val) {  // no need to check for prop nullptr, already done in GENERAL_MUTATOR
+		FORCEINLINE static bool ENGAGE(UObject* self, UProperty* prop, float val) {  // no need to check for prop nullptr, already done in GENERAL_MUTATOR
+			auto success = false;
 			if(self != nullptr) {
 				auto cast = Cast<UNumericProperty>(prop);
-				if (cast != nullptr && cast->IsFloatingPoint()) {
+				success = cast != nullptr && cast->IsFloatingPoint();
+				if (success) {
 					auto valPtr = prop->ContainerPtrToValuePtr<void>(self);
 					cast->SetFloatingPointPropertyValue(valPtr, val);
 				}
 			}
+			return success;
 		}
 	};
 public:
@@ -74,30 +79,44 @@ public:
 	template<typename T, typename ...ParamTypes> struct MAKE {
 		FORCEINLINE static T CONCRETE(ParamTypes... args) { return T(args...); }
 	};
-
+#pragma warning(disable:4701) 
 	template<typename ReturnType> struct GENERAL_ACCESSOR {
 		FORCEINLINE static ReturnType CONCRETE(UObject* self, FString name) {
+			auto success = false;
+			ReturnType result;
+			FString clsName;
 			TSubclassOf<UObject> cls = self == nullptr? nullptr : self->GetClass();
 			if(cls != nullptr && cls->IsValidLowLevel()) {
+				clsName = self->GetName();
 				for (TFieldIterator<UProperty> propIt(cls); propIt; ++propIt) {
 					auto prop = *propIt;
-					if(prop != nullptr) { UE_LOG(LogClass, Warning, TEXT("ACCESSOR test %s"), *(prop->GetNameCPP())) }
-					if(prop != nullptr && prop->GetNameCPP() == name) { return SPECIALIZED_ACCESSOR<ReturnType>::ENGAGE(self, prop); }
+					if(prop != nullptr && prop->GetNameCPP() == name) {
+						auto returned = SPECIALIZED_ACCESSOR<ReturnType>::ENGAGE(self, prop);
+						success = returned.Get<0>();
+						result = returned.Get<1>();
+					}
 				}
 			}
-			return SPECIALIZED_ACCESSOR<ReturnType>::ENGAGE(nullptr, nullptr);
+			if(!success) {
+				result = SPECIALIZED_ACCESSOR<ReturnType>::ENGAGE(nullptr, nullptr).Get<1>();
+				UE_LOG(LogClass, Warning, TEXT("Tcl warning: an accessor could not retrieve a value by the name of %s of the type %s"), *name, *clsName)
+			}
+			return result;
 		}
 	};
+#pragma warning(default:4701) 
 	template<typename T> struct GENERAL_MUTATOR {
 		FORCEINLINE static void CONCRETE(UObject* self, FString name, T val) {
+			auto success = false;
+			FString clsName;
 			TSubclassOf<UObject> cls = self == nullptr? nullptr : self->GetClass();
 			if(cls != nullptr && cls->IsValidLowLevel()) {
 				for (TFieldIterator<UProperty> propIt(cls); propIt; ++propIt) {
 					auto prop = *propIt;
-					if(prop != nullptr) { UE_LOG(LogClass, Warning, TEXT("MUTATOR test %s"), *(prop->GetNameCPP())) }
-					if(prop != nullptr && prop->GetNameCPP() == name) { return SPECIALIZED_MUTATOR<T>::ENGAGE(self, prop, val); }
+					if(prop != nullptr && prop->GetNameCPP() == name) { success = SPECIALIZED_MUTATOR<T>::ENGAGE(self, prop, val); }
 				}
 			}
+			if(!success) { UE_LOG(LogClass, Warning, TEXT("Tcl warning: a mutator could not adjust a value by the name of %s of the type %s"), *name, *clsName) }
 		}
 	};
 
