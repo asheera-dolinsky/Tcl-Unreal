@@ -73,8 +73,11 @@ public:
 	static Tcl_Obj* Purge(AActor*);
 	static int32 Eval(AActor*, FString, FString);
 
-	template<typename T> struct ADD {
-		FORCEINLINE static T CONCRETE(T First, T Second) { return First + Second; }
+	template<typename Ret, typename Left, typename Right> struct ADD {
+		FORCEINLINE static Ret CONCRETE(Left First, Right Second) { return First + Second; }
+	};
+	template<typename Ret, typename Left, typename Right> struct DIV {
+		FORCEINLINE static Ret CONCRETE(Left First, Right Second) { return First / Second; }
 	};
 	template<typename T, typename ...ParamTypes> struct MAKE {
 		FORCEINLINE static T CONCRETE(ParamTypes... args) { return T(args...); }
@@ -99,7 +102,7 @@ public:
 			}
 			if(!success) {
 				result = SPECIALIZED_ACCESSOR<ReturnType>::ENGAGE(nullptr, nullptr).Get<1>();
-				UE_LOG(LogClass, Warning, TEXT("Tcl warning: an accessor could not retrieve a value by the name of %s of the type %s"), *name, *clsName)
+				UE_LOG(LogClass, Warning, TEXT("Tcl warning: an accessor could not retrieve a value by the name of %s in an object of the type %s"), *name, *clsName)
 			}
 			return result;
 		}
@@ -116,7 +119,7 @@ public:
 					if(prop != nullptr && prop->GetNameCPP() == name) { success = SPECIALIZED_MUTATOR<T>::ENGAGE(self, prop, val); }
 				}
 			}
-			if(!success) { UE_LOG(LogClass, Warning, TEXT("Tcl warning: a mutator could not adjust a value by the name of %s of the type %s"), *name, *clsName) }
+			if(!success) { UE_LOG(LogClass, Warning, TEXT("Tcl warning: a mutator could not adjust a value by the name of %s in an object of the type %s"), *name, *clsName) }
 		}
 	};
 

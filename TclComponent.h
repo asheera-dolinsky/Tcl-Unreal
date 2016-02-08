@@ -30,6 +30,7 @@
 
 #define _TCL_DLL_FNAME_ "tcl86t.dll"
 #include <typeinfo>
+#include <functional>
 #include "Api.hpp"
 #include "TupleUtils.hpp"
 #include "Components/ActorComponent.h"
@@ -167,7 +168,6 @@ public:
 		}
 	}
 
-	
 	template<typename Cls, typename ReturnType, typename ...ParamTypes> int bind(Cls* self, FString name, FString tclname = "") {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			const char* fname = TCHAR_TO_ANSI(*name);
@@ -203,6 +203,16 @@ public:
 			const char* fname = TCHAR_TO_ANSI(*name);
 			auto del = new TBaseDelegate<ReturnType, ParamTypes...>;
 			del->BindUObject(self, f);
+			auto data = new WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>({ interpreter, name, del });
+			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<ReturnType, ParamTypes...>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>);
+			return TCL_OK;
+		}
+	}
+	template<typename ReturnType, typename ...ParamTypes> int bindlambda(std::function<ReturnType(ParamTypes...)> f, FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+			const char* fname = TCHAR_TO_ANSI(*name);
+			auto del = new TBaseDelegate<ReturnType, ParamTypes...>;
+			del->BindLambda(f);
 			auto data = new WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>({ interpreter, name, del });
 			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<ReturnType, ParamTypes...>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>);
 			return TCL_OK;
@@ -442,7 +452,7 @@ template<typename T> struct NEW_OBJ {
 				auto ptr = static_cast<T*>(obj->internalRep.otherValuePtr);
 				FString tname = obj->typePtr->name;
 				delete ptr;
-				UE_LOG(LogClass, Log, TEXT("Tcl has garbage collected an object of type: %s"), *tname)
+				//UE_LOG(LogClass, Log, TEXT("Tcl has garbage collected an object of type: %s"), *tname)  // uncomment to profile via logging
 		};
 		static const Tcl_ObjType type = { IS_TARRAY<T>::OF_UOBJECTS? "TArray of UObjects" : IS_TSUBCLASSOF<T>::OF_UOBJECTS? "TSubclassOf of UObjects" : typeid(T).name(), cleanUpFunc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
 		auto obj = UTclComponent::get_Tcl_NewObj()();

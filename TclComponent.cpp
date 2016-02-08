@@ -81,7 +81,8 @@ int UTclComponent::init() {
 	this->bindstatic<TArray<AActor*>, UWorld*, TSubclassOf<AActor>>(&UTclUnrealEssentials::AllActorsOf, "AllActorsOf");
 	this->bindstatic<UActorComponent*, AActor*, TSubclassOf<UActorComponent>>(&UTclUnrealEssentials::FindComponentOf, "FindComponentOf");
 	this->bindstatic<FVector, float, float, float>(&UTclUnrealEssentials::MAKE<FVector, float, float, float>::CONCRETE, "MakeVector");
-	this->bindstatic<FVector, FVector, FVector>(&UTclUnrealEssentials::ADD<FVector>::CONCRETE, "AddVectors");
+	this->bindstatic<FVector, FVector, FVector>(&UTclUnrealEssentials::ADD<FVector, FVector, FVector>::CONCRETE, "AddVectors");
+	this->bindstatic<FVector, FVector, float>(&UTclUnrealEssentials::DIV<FVector, FVector, float>::CONCRETE, "DivideVectorByScalar");
 	this->bindstatic<FRotator, float, float, float>(&UTclUnrealEssentials::MAKE<FRotator, float, float, float>::CONCRETE, "MakeRotator");
 	this->bindstatic<FLinearColor, float, float, float, float>(&UTclUnrealEssentials::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
 	this->bindstatic<void, UObject*, FVector, FVector, FLinearColor, float, float>(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
@@ -200,7 +201,6 @@ int32 UTclComponent::Eval(FString Filename, FString Code) {
 	if(!Filename.IsEmpty()) {
 		fname = FPaths::GameContentDir() + "Scripts/" + Filename;
 		if(FPaths::FileExists(fname)) {
-			UE_LOG(LogClass, Log, TEXT("Tcl loaded a script file at path: %s"), *fname)
 			FFileHelper::LoadFileToString(Code, *fname);
 		} else {
 			UE_LOG(LogClass, Warning, TEXT("File at path: %s doesn't exist! Executing the Code field"), *fname)

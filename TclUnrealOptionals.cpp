@@ -38,3 +38,5 @@ Tcl_Obj* UTclUnrealOptionals::GetCursorHit(APlayerController* PlayerController, 
 	return UTclComponent::pack<bool, FVector>(hitSuccess, impactPoint);
 
 }
+
+FVector UTclUnrealOptionals::RotationToVector(FRotator Rot) { return Rot.Vector(); }
