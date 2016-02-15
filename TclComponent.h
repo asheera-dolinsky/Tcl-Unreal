@@ -71,7 +71,6 @@ template<typename D> struct WrapperContainer {
 };
 
 template<typename ReturnType, typename ...ParamTypes> struct TCL_WRAPPER;
-template<typename T> struct NEW_OBJ;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class PHANTOMGUNSDEMO_API UTclComponent : public UActorComponent {
@@ -124,6 +123,7 @@ public:
 	static _Tcl_NewLongObjProto get_Tcl_NewLongObj();
 	static _Tcl_NewDoubleObjProto get_Tcl_NewDoubleObj();
 	static _Tcl_NewStringObjProto get_Tcl_NewStringObj();
+	static _Tcl_NewListObjProto get_Tcl_NewListObj();
 	static _Tcl_GetBooleanFromObjProto get_Tcl_GetBooleanFromObj();
 	static _Tcl_GetLongFromObjProto get_Tcl_GetLongFromObj();
 	static _Tcl_GetDoubleFromObjProto get_Tcl_GetDoubleFromObj();
@@ -136,7 +136,6 @@ public:
 
 	void Fill(Tcl_Obj*);
 	Tcl_Obj* Purge();
-	static Tcl_Obj* Convert(TArray<UObject*>);
 
 	template<typename D> static void freeWrapperContainer(ClientData clientData) {
 		auto data = static_cast<WrapperContainer<D>*>(clientData);
@@ -237,6 +236,72 @@ public:
 			return TCL_OK;
 		}
 	}
+
+	template<typename T> struct NEW_OBJ {
+		FORCEINLINE static Tcl_Obj* MAKE(T val) {
+			static const auto cleanUpFunc = [](Tcl_Obj* obj) -> void {
+					auto ptr = static_cast<T*>(obj->internalRep.otherValuePtr);
+					FString tname = obj->typePtr->name;
+					delete ptr;
+					//UE_LOG(LogClass, Log, TEXT("Tcl has garbage collected an object of type: %s"), *tname)  // uncomment to profile via logging
+			};
+			static const Tcl_ObjType type = { IS_TARRAY<T>::OF_UOBJECTS? "TArray of UObjects" : IS_TSUBCLASSOF<T>::OF_UOBJECTS? "TSubclassOf of UObjects" : typeid(T).name(), cleanUpFunc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
+			auto obj = _Tcl_NewObj();
+			obj->internalRep.otherValuePtr = static_cast<ClientData>(new T(val));
+			obj->typePtr = &type;
+			FString tname = obj->typePtr->name;
+			return obj;
+		}
+	};
+	template<typename T> struct NEW_OBJ<T*> {
+		FORCEINLINE static Tcl_Obj* MAKE(T* val) {
+			static const Tcl_ObjType type = { std::is_base_of<UObject, T>::value? "UObject" : typeid(T).name(), &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
+			auto obj = _Tcl_NewObj();
+			obj->internalRep.otherValuePtr = static_cast<ClientData>(val);
+			obj->typePtr = &type;
+			return obj;
+		}
+	};
+	template<> struct NEW_OBJ<bool> {
+		FORCEINLINE static Tcl_Obj* MAKE(bool val) {
+			return _Tcl_NewBooleanObj(val);
+		}
+	};
+	template<> struct NEW_OBJ<int32> {
+		FORCEINLINE static Tcl_Obj* MAKE(int32 val) {
+			return _Tcl_NewLongObj(val);
+		}
+	};
+	template<> struct NEW_OBJ<uint32> {
+		FORCEINLINE static Tcl_Obj* MAKE(uint32 val) {
+			return _Tcl_NewLongObj(val);
+		}
+	};
+	template<> struct NEW_OBJ<int64> {
+		FORCEINLINE static Tcl_Obj* MAKE(int64 val) {
+			return _Tcl_NewLongObj(val);
+		}
+	};
+	template<> struct NEW_OBJ<uint64> {
+		FORCEINLINE static Tcl_Obj* MAKE(uint64 val) {
+			return _Tcl_NewLongObj(val);
+		}
+	};
+	template<> struct NEW_OBJ<float> {
+		FORCEINLINE static Tcl_Obj* MAKE(float val) {
+			return _Tcl_NewDoubleObj(val);
+		}
+	};
+	template<> struct NEW_OBJ<FString> {
+		FORCEINLINE static Tcl_Obj* MAKE(FString val) {
+			return _Tcl_NewStringObj(TCHAR_TO_ANSI(*val), -1);
+		}
+	};
+	template<> struct NEW_OBJ<FName> {
+		FORCEINLINE static Tcl_Obj* MAKE(FName val) {
+			return _Tcl_NewStringObj(TCHAR_TO_ANSI(*val.ToString()), -1);
+		}
+	};
 
 	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 Eval(FString Filename, FString Code);
@@ -446,117 +511,51 @@ template<> struct POPULATE<0> {
 	}
 };
 
-template<typename T> struct NEW_OBJ {
-	FORCEINLINE static Tcl_Obj* MAKE(T val) {
-		static const auto cleanUpFunc = [](Tcl_Obj* obj) -> void {
-				auto ptr = static_cast<T*>(obj->internalRep.otherValuePtr);
-				FString tname = obj->typePtr->name;
-				delete ptr;
-				//UE_LOG(LogClass, Log, TEXT("Tcl has garbage collected an object of type: %s"), *tname)  // uncomment to profile via logging
-		};
-		static const Tcl_ObjType type = { IS_TARRAY<T>::OF_UOBJECTS? "TArray of UObjects" : IS_TSUBCLASSOF<T>::OF_UOBJECTS? "TSubclassOf of UObjects" : typeid(T).name(), cleanUpFunc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
-		auto obj = UTclComponent::get_Tcl_NewObj()();
-		obj->internalRep.otherValuePtr = static_cast<ClientData>(new T(val));
-		obj->typePtr = &type;
-		FString tname = obj->typePtr->name;
-		return obj;
-	}
-};
-template<typename T> struct NEW_OBJ<T*> {
-	FORCEINLINE static Tcl_Obj* MAKE(T* val) {
-		static const Tcl_ObjType type = { std::is_base_of<UObject, T>::value? "UObject" : typeid(T).name(), &UTclComponent::Tcl_FreeInternalRepProc, &UTclComponent::Tcl_DupInternalRepProc, &UTclComponent::Tcl_UpdateStringProc, &UTclComponent::Tcl_SetFromAnyProc };
-		auto obj = UTclComponent::get_Tcl_NewObj()();
-		obj->internalRep.otherValuePtr = static_cast<ClientData>(val);
-		obj->typePtr = &type;
-		return obj;
-	}
-};
-template<> struct NEW_OBJ<bool> {
-	FORCEINLINE static Tcl_Obj* MAKE(bool val) {
-		return UTclComponent::get_Tcl_NewBooleanObj()(val);
-	}
-};
-template<> struct NEW_OBJ<int32> {
-	FORCEINLINE static Tcl_Obj* MAKE(int32 val) {
-		return UTclComponent::get_Tcl_NewLongObj()(val);
-	}
-};
-template<> struct NEW_OBJ<uint32> {
-	FORCEINLINE static Tcl_Obj* MAKE(uint32 val) {
-		return UTclComponent::get_Tcl_NewLongObj()(val);
-	}
-};
-template<> struct NEW_OBJ<int64> {
-	FORCEINLINE static Tcl_Obj* MAKE(int64 val) {
-		return UTclComponent::get_Tcl_NewLongObj()(val);
-	}
-};
-template<> struct NEW_OBJ<uint64> {
-	FORCEINLINE static Tcl_Obj* MAKE(uint64 val) {
-		return UTclComponent::get_Tcl_NewLongObj()(val);
-	}
-};
-template<> struct NEW_OBJ<float> {
-	FORCEINLINE static Tcl_Obj* MAKE(float val) {
-		return UTclComponent::get_Tcl_NewDoubleObj()(val);
-	}
-};
-template<> struct NEW_OBJ<FString> {
-	FORCEINLINE static Tcl_Obj* MAKE(FString val) {
-		return UTclComponent::get_Tcl_NewStringObj()(TCHAR_TO_ANSI(*val), -1);
-	}
-};
-template<> struct NEW_OBJ<FName> {
-	FORCEINLINE static Tcl_Obj* MAKE(FName val) {
-		return UTclComponent::get_Tcl_NewStringObj()(TCHAR_TO_ANSI(*val.ToString()), -1);
-	}
-};
-
 template<typename T> struct PROCESS_RETURN {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, T val) {
-		auto obj = NEW_OBJ<T>::MAKE(val);
+		auto obj = UTclComponent::NEW_OBJ<T>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<typename T> struct PROCESS_RETURN<T*> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, T* val) {
-		auto obj = NEW_OBJ<T*>::MAKE(val);
+		auto obj = UTclComponent::NEW_OBJ<T*>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<bool> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, bool val) {
-		auto obj = NEW_OBJ<bool>::MAKE(val);
+		auto obj = UTclComponent::NEW_OBJ<bool>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<int32> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, int32 val) {
-		auto obj = NEW_OBJ<int32>::MAKE(val);
+		auto obj = UTclComponent::NEW_OBJ<int32>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<uint32> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, uint32 val) {
-		auto obj = NEW_OBJ<uint32>::MAKE(val);
+		auto obj = UTclComponent::NEW_OBJ<uint32>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<int64> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, int64 val) {
-		auto obj = NEW_OBJ<int64>::MAKE(val);
+		auto obj = UTclComponent::NEW_OBJ<int64>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<float> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, float val) {
-		auto obj = NEW_OBJ<float>::MAKE(val);
+		auto obj = UTclComponent::NEW_OBJ<float>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
 template<> struct PROCESS_RETURN<FString> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, FString val) {
-		auto obj = NEW_OBJ<FString>::MAKE(val);
+		auto obj = UTclComponent::NEW_OBJ<FString>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };

@@ -63,8 +63,6 @@ Tcl_Obj* UTclComponent::Purge() {
 
 }
 
-Tcl_Obj* UTclComponent::Convert(TArray<UObject*> Arr) { return UTclComponent::convert(Arr); }
-
 int UTclComponent::init() {
 	static const Tcl_ObjType type = { "NIL", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
 	interpreter = _Tcl_CreateInterp();
@@ -74,7 +72,7 @@ int UTclComponent::init() {
 	this->bindstatic<int32, AActor*, FString, FString>(&UTclUnrealEssentials::Eval, "Eval");
 	this->bindmethod<UTclComponent, void, Tcl_Obj*>(this, &UTclComponent::Fill, "Fill");
 	this->bindstatic<Tcl_Obj*, AActor*>(&UTclUnrealEssentials::Purge, "Purge");
-	this->bindstatic<Tcl_Obj*, TArray<UObject*>>(&UTclComponent::Convert, "Convert");
+	this->bindstatic<Tcl_Obj*, TArray<UObject*>>(&UTclUnrealEssentials::GENERAL_CONVERTER<UObject*>::CONCRETE, "Convert");
 	this->bindconstmethod<UTclComponent, UWorld*>(this, &UTclComponent::GetWorld, "GetWorld");
 	this->bindstatic<APlayerController*, UObject*, int32>(&UGameplayStatics::GetPlayerController, "GetPlayerController");
 	this->bindstatic<TSubclassOf<UObject>, FString>(&UTclUnrealEssentials::FindClass, "FindClass");
@@ -185,6 +183,7 @@ _Tcl_NewBooleanObjProto UTclComponent::get_Tcl_NewBooleanObj() { return _Tcl_New
 _Tcl_NewLongObjProto UTclComponent::get_Tcl_NewLongObj() { return _Tcl_NewLongObj; };
 _Tcl_NewDoubleObjProto UTclComponent::get_Tcl_NewDoubleObj() { return _Tcl_NewDoubleObj; }
 _Tcl_NewStringObjProto UTclComponent::get_Tcl_NewStringObj() { return _Tcl_NewStringObj; }
+_Tcl_NewListObjProto UTclComponent::get_Tcl_NewListObj() { return _Tcl_NewListObj; }
 _Tcl_GetBooleanFromObjProto UTclComponent::get_Tcl_GetBooleanFromObj() { return _Tcl_GetBooleanFromObj; }
 _Tcl_GetLongFromObjProto UTclComponent::get_Tcl_GetLongFromObj() { return _Tcl_GetLongFromObj; }
 _Tcl_GetDoubleFromObjProto UTclComponent::get_Tcl_GetDoubleFromObj() { return _Tcl_GetDoubleFromObj; }

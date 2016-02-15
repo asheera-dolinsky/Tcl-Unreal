@@ -89,7 +89,7 @@ public:
 			ReturnType result;
 			FString clsName;
 			TSubclassOf<UObject> cls = self == nullptr? nullptr : self->GetClass();
-			if(cls != nullptr && cls->IsValidLowLevel()) {
+			if(cls != nullptr && cls->IsValidLowLevel() && !name.IsEmpty()) {
 				clsName = self->GetName();
 				for (TFieldIterator<UProperty> propIt(cls); propIt; ++propIt) {
 					auto prop = *propIt;
@@ -102,7 +102,7 @@ public:
 			}
 			if(!success) {
 				result = SPECIALIZED_ACCESSOR<ReturnType>::ENGAGE(nullptr, nullptr).Get<1>();
-				UE_LOG(LogClass, Warning, TEXT("Tcl warning: an accessor could not retrieve a value by the name of %s in an object of the type %s"), *name, *clsName)
+				//UE_LOG(LogClass, Warning, TEXT("Tcl warning: an accessor could not retrieve a value by the name of %s in an object of the type %s"), *name, *clsName)
 			}
 			return result;
 		}
@@ -113,13 +113,26 @@ public:
 			auto success = false;
 			FString clsName;
 			TSubclassOf<UObject> cls = self == nullptr? nullptr : self->GetClass();
-			if(cls != nullptr && cls->IsValidLowLevel()) {
+			if(cls != nullptr && cls->IsValidLowLevel() && !name.IsEmpty()) {
 				for (TFieldIterator<UProperty> propIt(cls); propIt; ++propIt) {
 					auto prop = *propIt;
 					if(prop != nullptr && prop->GetNameCPP() == name) { success = SPECIALIZED_MUTATOR<T>::ENGAGE(self, prop, val); }
 				}
 			}
 			if(!success) { UE_LOG(LogClass, Warning, TEXT("Tcl warning: a mutator could not adjust a value by the name of %s in an object of the type %s"), *name, *clsName) }
+		}
+	};
+
+	template<typename P> struct GENERAL_CONVERTER {
+		FORCEINLINE static Tcl_Obj* CONCRETE(TArray<P> arr) {
+			if (UTclComponent::handleIsMissing()) { return nullptr; } else {
+				const auto len = arr.Num();
+				auto objs = new Tcl_Obj*[len];
+				for(int i = 0; i < len; i++) { objs[i] = UTclComponent::NEW_OBJ<P>::MAKE(arr[i]); }
+				auto result = UTclComponent::get_Tcl_NewListObj()(len, static_cast<ClientData>(objs));
+				delete[] objs;
+				return result;
+			}
 		}
 	};
 
