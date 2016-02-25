@@ -33,6 +33,8 @@ _Tcl_EvalProto UTclComponent::_Tcl_Eval = nullptr;
 _Tcl_CreateObjCommandProto UTclComponent::_Tcl_CreateObjCommand = nullptr;
 _Tcl_SetObjResultProto UTclComponent::_Tcl_SetObjResult = nullptr;
 _Tcl_NewObjProto UTclComponent::_Tcl_NewObj = nullptr;
+_Tcl_IncrRefCountProto UTclComponent::_Tcl_IncrRefCount = nullptr;
+_Tcl_DecrRefCountProto UTclComponent::_Tcl_DecrRefCount = nullptr;
 _Tcl_NewBooleanObjProto UTclComponent::_Tcl_NewBooleanObj = nullptr;
 _Tcl_NewLongObjProto UTclComponent::_Tcl_NewLongObj = nullptr;
 _Tcl_NewDoubleObjProto UTclComponent::_Tcl_NewDoubleObj = nullptr;
@@ -51,14 +53,15 @@ UTclComponent::UTclComponent(const FObjectInitializer& ObjectInitializer) : Supe
 }
 
 void UTclComponent::Fill(Tcl_Obj* obj) {
+	if(buffer != nullptr) { obj->refCount--; }  // _Tcl_DecrRefCount(buffer, __FILE__, __LINE__); }
 	buffer = obj;
-	if(buffer != nullptr) { buffer->refCount++; }
+	if(buffer != nullptr) { _Tcl_IncrRefCount(buffer, __FILE__, __LINE__); }
 
 }
 Tcl_Obj* UTclComponent::Purge() {
 	auto obj = buffer;
 	buffer = nullptr;
-	if(obj == nullptr) { obj = _Tcl_NewObj(); } else { obj->refCount--; }
+	if(obj == nullptr) { obj = _Tcl_NewObj(); } else { obj->refCount--; }  // _Tcl_DecrRefCount(obj, __FILE__, __LINE__); }
 	return obj;
 
 }
@@ -72,6 +75,7 @@ int UTclComponent::init() {
 	this->bindstatic<int32, AActor*, FString, FString>(&UTclUnrealEssentials::Eval, "Eval");
 	this->bindmethod<UTclComponent, void, Tcl_Obj*>(this, &UTclComponent::Fill, "Fill");
 	this->bindstatic<Tcl_Obj*, AActor*>(&UTclUnrealEssentials::Purge, "Purge");
+	this->bindmethod<UTclComponent, Tcl_Obj*>(this, &UTclComponent::Purge, "PurgeSelf");
 	this->bindstatic<Tcl_Obj*, TArray<UObject*>>(&UTclUnrealEssentials::GENERAL_CONVERTER<UObject*>::CONCRETE, "Convert");
 	this->bindconstmethod<UTclComponent, UWorld*>(this, &UTclComponent::GetWorld, "GetWorld");
 	this->bindstatic<APlayerController*, UObject*, int32>(&UGameplayStatics::GetPlayerController, "GetPlayerController");
@@ -84,6 +88,7 @@ int UTclComponent::init() {
 	this->bindstatic<FRotator, float, float, float>(&UTclUnrealEssentials::MAKE<FRotator, float, float, float>::CONCRETE, "MakeRotator");
 	this->bindstatic<FLinearColor, float, float, float, float>(&UTclUnrealEssentials::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
 	this->bindstatic<void, UObject*, FVector, FVector, FLinearColor, float, float>(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
+	this->bindstatic<int32, float>(&FPlatformMath::TruncToInt, "TruncToInt");
 
 	this->bindstatic<float, UObject*, FString>(&UTclUnrealEssentials::GENERAL_ACCESSOR<float>::CONCRETE, "AccessFloat");
 	this->bindstatic<void, UObject*, FString, float>(&UTclUnrealEssentials::GENERAL_MUTATOR<float>::CONCRETE, "MutateFloat");
@@ -112,6 +117,10 @@ void UTclComponent::BeginPlay() {
 				_Tcl_SetObjResult = static_cast<_Tcl_SetObjResultProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewObj";
 				_Tcl_NewObj = static_cast<_Tcl_NewObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
+				procName = "Tcl_DbIncrRefCount";
+				_Tcl_IncrRefCount = static_cast<_Tcl_IncrRefCountProto>(FPlatformProcess::GetDllExport(handle, *procName));
+				procName = "Tcl_DbDecrRefCount";
+				_Tcl_DecrRefCount = static_cast<_Tcl_DecrRefCountProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewBooleanObj";
 				_Tcl_NewBooleanObj = static_cast<_Tcl_NewBooleanObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_NewLongObj";
@@ -138,6 +147,8 @@ void UTclComponent::BeginPlay() {
 					_Tcl_CreateObjCommand == nullptr ||
 					_Tcl_SetObjResult == nullptr ||
 					_Tcl_NewObj == nullptr ||
+					_Tcl_IncrRefCount == nullptr ||
+					_Tcl_DecrRefCount == nullptr ||
 					_Tcl_NewBooleanObj == nullptr ||
 					_Tcl_NewLongObj == nullptr ||
 					_Tcl_NewDoubleObj == nullptr ||

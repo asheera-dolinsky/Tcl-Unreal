@@ -83,6 +83,8 @@ protected:
 	static _Tcl_CreateObjCommandProto _Tcl_CreateObjCommand;
 	static _Tcl_SetObjResultProto _Tcl_SetObjResult;
 	static _Tcl_NewObjProto _Tcl_NewObj;
+	static _Tcl_IncrRefCountProto _Tcl_IncrRefCount;
+	static _Tcl_DecrRefCountProto _Tcl_DecrRefCount;
 	static _Tcl_NewBooleanObjProto _Tcl_NewBooleanObj;
 	static _Tcl_NewLongObjProto _Tcl_NewLongObj;
 	static _Tcl_NewDoubleObjProto _Tcl_NewDoubleObj;
@@ -158,9 +160,7 @@ public:
 		if (handleIsMissing()) { return nullptr; } else {
 			const auto len = arr.Num();
 			auto objs = new Tcl_Obj*[len];
-			for(int i = 0; i < len; i++) {
-				objs[i] = NEW_OBJ<P>::MAKE(arr[i]);
-			}
+			for(int i = 0; i < len; i++) { objs[i] = NEW_OBJ<P>::MAKE(arr[i]); }
 			auto result = _Tcl_NewListObj(len, static_cast<ClientData>(objs));
 			delete[] objs;
 			return result;
@@ -358,7 +358,13 @@ template<typename T> struct IMPL_CONVERT {  // UStruct, TArray<T>, TSubclassOf<T
 			if(pass) {
 				*val = *repr;
 				return TCL_OK;
-			} else { gottenType = clsvalid? repr->GetDescription() : "nullptr"; }
+			} else {
+				if(clsvalid) { gottenType = repr->GetDescription(); } else {
+					gottenType = "nullptr";
+					*val = nullptr;
+					return TCL_OK;
+				}
+			}
 		}
 		UE_LOG(LogClass, Error, TEXT("Tcl error! Received a TSubclassOf containing wrong type of UObjects: '%s'. The TSubclassOf should be of the type or subtype: '%s'."), *gottenType, *parentType)
 		return TCL_ERROR;
@@ -556,6 +562,12 @@ template<> struct PROCESS_RETURN<float> {
 template<> struct PROCESS_RETURN<FString> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, FString val) {
 		auto obj = UTclComponent::NEW_OBJ<FString>::MAKE(val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template<> struct PROCESS_RETURN<FName> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, FName val) {
+		auto obj = UTclComponent::NEW_OBJ<FName>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };

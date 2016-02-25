@@ -30,8 +30,20 @@
 UCLASS() class UTclUnrealEssentials : public UBlueprintFunctionLibrary {
   GENERATED_UCLASS_BODY()
 private:
-	template<typename ReturnType> struct SPECIALIZED_ACCESSOR {
-		//kept empty to raise a compile time error if not used with a proper type
+	template<typename T> struct SPECIALIZED_ACCESSOR  {
+		FORCEINLINE static TTuple<bool, T> ENGAGE(UObject* self, UProperty* prop) {  // no need to check for prop nullptr, already done in GENERAL_ACCESSOR
+			auto result = T();
+			auto success = false;
+			if(self != nullptr) {
+				auto cast = Cast<UProperty>(prop);
+				success = cast != nullptr;
+				if (success) {
+					auto valPtr = prop->ContainerPtrToValuePtr<T>(self);
+					result = *valPtr;
+				}
+			}
+			return TTuple<bool, T>(success, result);
+		}
 	};
 	template<> struct SPECIALIZED_ACCESSOR<float> {
 		FORCEINLINE static TTuple<bool, float> ENGAGE(UObject* self, UProperty* prop) {  // no need to check for prop nullptr, already done in GENERAL_ACCESSOR
@@ -48,6 +60,21 @@ private:
 			return TTuple<bool, float>(success, result);
 		}
 	};
+	// template<typename ReturnType, typename... ParamTypes> struct SPECIALIZED_ACCESSOR<TBaseDynamicMulticastDelegate<FWeakObjectPtr, ReturnType, ParamTypes...>> {
+	// 	FORCEINLINE static TTuple<bool, TBaseDynamicMulticastDelegate<FWeakObjectPtr, ReturnType, ParamTypes...>> ENGAGE(UObject* self, UProperty* prop) {  // no need to check for prop nullptr, already done in GENERAL_ACCESSOR
+	// 		auto result = TBaseDynamicMulticastDelegate<FWeakObjectPtr, ReturnType, ParamTypes...>();
+	// 		auto success = false;
+	// 		if(self != nullptr) {
+	// 			auto cast = Cast<UProperty>(prop);
+	// 			success = cast != nullptr;
+	// 			if (success) {
+	// 				auto valPtr = prop->ContainerPtrToValuePtr<TBaseDynamicMulticastDelegate<FWeakObjectPtr, ReturnType, ParamTypes...>>(self);
+	// 				result = *valPtr;
+	// 			}
+	// 		}
+	// 		return TTuple<bool, TBaseDynamicMulticastDelegate<FWeakObjectPtr, ReturnType, ParamTypes...>>(success, result);
+	// 	}
+	// };
 
 	template<typename ReturnType> struct SPECIALIZED_MUTATOR {
 		//kept empty to raise a compile time error if not used with a proper type
@@ -61,6 +88,20 @@ private:
 				if (success) {
 					auto valPtr = prop->ContainerPtrToValuePtr<void>(self);
 					cast->SetFloatingPointPropertyValue(valPtr, val);
+				}
+			}
+			return success;
+		}
+	};
+	template<> struct SPECIALIZED_MUTATOR<int64> {
+		FORCEINLINE static bool ENGAGE(UObject* self, UProperty* prop, int64 val) {  // no need to check for prop nullptr, already done in GENERAL_MUTATOR
+			auto success = false;
+			if(self != nullptr) {
+				auto cast = Cast<UNumericProperty>(prop);
+				success = cast != nullptr && cast->IsInteger();
+				if (success) {
+					auto valPtr = prop->ContainerPtrToValuePtr<void>(self);
+					cast->SetIntPropertyValue(valPtr, val);
 				}
 			}
 			return success;
@@ -82,6 +123,10 @@ public:
 	template<typename T, typename ...ParamTypes> struct MAKE {
 		FORCEINLINE static T CONCRETE(ParamTypes... args) { return T(args...); }
 	};
+	template<typename T> struct EQ {
+		FORCEINLINE static bool CONCRETE(T First, T Second) { return First == Second; }
+	};
+
 #pragma warning(disable:4701) 
 	template<typename ReturnType> struct GENERAL_ACCESSOR {
 		FORCEINLINE static ReturnType CONCRETE(UObject* self, FString name) {
@@ -102,7 +147,7 @@ public:
 			}
 			if(!success) {
 				result = SPECIALIZED_ACCESSOR<ReturnType>::ENGAGE(nullptr, nullptr).Get<1>();
-				//UE_LOG(LogClass, Warning, TEXT("Tcl warning: an accessor could not retrieve a value by the name of %s in an object of the type %s"), *name, *clsName)
+				UE_LOG(LogClass, Warning, TEXT("Tcl warning: an accessor could not retrieve a value by the name of %s in an object of the type %s"), *name, *clsName)
 			}
 			return result;
 		}
@@ -124,16 +169,7 @@ public:
 	};
 
 	template<typename P> struct GENERAL_CONVERTER {
-		FORCEINLINE static Tcl_Obj* CONCRETE(TArray<P> arr) {
-			if (UTclComponent::handleIsMissing()) { return nullptr; } else {
-				const auto len = arr.Num();
-				auto objs = new Tcl_Obj*[len];
-				for(int i = 0; i < len; i++) { objs[i] = UTclComponent::NEW_OBJ<P>::MAKE(arr[i]); }
-				auto result = UTclComponent::get_Tcl_NewListObj()(len, static_cast<ClientData>(objs));
-				delete[] objs;
-				return result;
-			}
-		}
+		FORCEINLINE static Tcl_Obj* CONCRETE(TArray<P> arr) { return UTclComponent::convert(arr); }
 	};
 
 };

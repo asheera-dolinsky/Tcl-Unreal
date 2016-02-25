@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "AI/Navigation/NavModifierVolume.h"
 #include "TclUnrealOptionals.generated.h"
 
 
@@ -32,5 +33,7 @@ UCLASS() class UTclUnrealOptionals : public UBlueprintFunctionLibrary {
 public:
 	static Tcl_Obj* GetCursorHit(APlayerController*, TArray<TEnumAsByte<EObjectTypeQuery>>, bool);
 	static FVector RotationToVector(FRotator);
+	static void SetActorLocation(AActor*, FVector);
+	static void SetCollisionProfileByName(UPrimitiveComponent*, FName);
 
 };

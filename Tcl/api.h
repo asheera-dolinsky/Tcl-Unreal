@@ -31,6 +31,8 @@ typedef int(*_Tcl_EvalProto)(Tcl_Interp*, const char*);
 typedef void(*_Tcl_CreateObjCommandProto)(Tcl_Interp*, const char*, Tcl_ObjCmdProc*, ClientData, Tcl_CmdDeleteProc*);
 typedef void(*_Tcl_SetObjResultProto)(Tcl_Interp*, Tcl_Obj*);
 typedef Tcl_Obj*(*_Tcl_NewObjProto)(void);
+typedef void(*_Tcl_IncrRefCountProto)(Tcl_Obj*, const char*, int);
+typedef void(*_Tcl_DecrRefCountProto)(Tcl_Obj*, const char*, int);
 typedef Tcl_Obj*(*_Tcl_NewBooleanObjProto)(int);
 typedef Tcl_Obj*(*_Tcl_NewLongObjProto)(long);
 typedef Tcl_Obj*(*_Tcl_NewDoubleObjProto)(double);

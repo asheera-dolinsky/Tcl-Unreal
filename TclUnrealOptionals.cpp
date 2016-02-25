@@ -40,3 +40,7 @@ Tcl_Obj* UTclUnrealOptionals::GetCursorHit(APlayerController* PlayerController, 
 }
 
 FVector UTclUnrealOptionals::RotationToVector(FRotator Rot) { return Rot.Vector(); }
+
+void UTclUnrealOptionals::SetActorLocation(AActor* Actor, FVector Location) { if(Actor != nullptr) { Actor->SetActorLocation(Location); } }
+
+void UTclUnrealOptionals::SetCollisionProfileByName(UPrimitiveComponent* Component, FName Name) { if(Component != nullptr) { Component->SetCollisionProfileName(Name); } }
