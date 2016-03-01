@@ -72,26 +72,31 @@ int UTclComponent::init() {
 	auto val = _Tcl_NewObj();
 	val->typePtr = &type;
 	*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
-	this->bindstatic<int32, AActor*, FString, FString>(&UTclUnrealEssentials::Eval, "Eval");
+	this->bindstatic(&UTclUnrealEssentials::Eval, "Eval");
 	this->bindmethod<UTclComponent, void, Tcl_Obj*>(this, &UTclComponent::Fill, "Fill");
-	this->bindstatic<Tcl_Obj*, AActor*>(&UTclUnrealEssentials::Purge, "Purge");
+	this->bindstatic(&UTclUnrealEssentials::Purge, "Purge");
 	this->bindmethod<UTclComponent, Tcl_Obj*>(this, &UTclComponent::Purge, "PurgeSelf");
-	this->bindstatic<Tcl_Obj*, TArray<UObject*>>(&UTclUnrealEssentials::GENERAL_CONVERTER<UObject*>::CONCRETE, "Convert");
-	this->bindconstmethod<UTclComponent, UWorld*>(this, &UTclComponent::GetWorld, "GetWorld");
-	this->bindstatic<APlayerController*, UObject*, int32>(&UGameplayStatics::GetPlayerController, "GetPlayerController");
-	this->bindstatic<TSubclassOf<UObject>, FString>(&UTclUnrealEssentials::FindClass, "FindClass");
-	this->bindstatic<TArray<AActor*>, UWorld*, TSubclassOf<AActor>>(&UTclUnrealEssentials::AllActorsOf, "AllActorsOf");
-	this->bindstatic<UActorComponent*, AActor*, TSubclassOf<UActorComponent>>(&UTclUnrealEssentials::FindComponentOf, "FindComponentOf");
-	this->bindstatic<FVector, float, float, float>(&UTclUnrealEssentials::MAKE<FVector, float, float, float>::CONCRETE, "MakeVector");
-	this->bindstatic<FVector, FVector, FVector>(&UTclUnrealEssentials::ADD<FVector, FVector, FVector>::CONCRETE, "AddVectors");
-	this->bindstatic<FVector, FVector, float>(&UTclUnrealEssentials::DIV<FVector, FVector, float>::CONCRETE, "DivideVectorByScalar");
-	this->bindstatic<FRotator, float, float, float>(&UTclUnrealEssentials::MAKE<FRotator, float, float, float>::CONCRETE, "MakeRotator");
-	this->bindstatic<FLinearColor, float, float, float, float>(&UTclUnrealEssentials::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
-	this->bindstatic<void, UObject*, FVector, FVector, FLinearColor, float, float>(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
-	this->bindstatic<int32, float>(&FPlatformMath::TruncToInt, "TruncToInt");
+	this->bindstatic(&UTclUnrealEssentials::GENERAL_CONVERTER<UObject*>::CONCRETE, "Convert");
+	this->bindmethod<UTclComponent, UWorld*>(this, &UTclComponent::GetWorld, "GetWorld");
+	this->bindstatic(&UGameplayStatics::GetPlayerController, "GetPlayerController");
+	this->bindstatic(&UTclUnrealEssentials::FindClass, "FindClass");
+	this->bindstatic(&UTclUnrealEssentials::AllActorsOf, "AllActorsOf");
+	this->bindstatic(&UTclUnrealEssentials::FindComponentOf, "FindComponentOf");
+	this->bindstatic(&UTclUnrealEssentials::MAKE<FVector, float, float, float>::CONCRETE, "MakeVector");
+	this->bindstatic(&UTclUnrealEssentials::ADD<FVector, FVector, FVector>::CONCRETE, "AddVectors");
+	this->bindstatic(&UTclUnrealEssentials::DIV<FVector, FVector, float>::CONCRETE, "DivideVectorByScalar");
+	this->bindstatic(&UTclUnrealEssentials::MAKE<FRotator, float, float, float>::CONCRETE, "MakeRotator");
+	this->bindstatic(&UTclUnrealEssentials::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
+	this->bindstatic(&UTclUnrealEssentials::LineTraceSingleByChannel, "LineTraceSingleByChannel");
+	this->bindstatic(&UTclUnrealEssentials::AddActorWorldOffset, "AddActorWorldOffset");
+	this->bindstatic(&UTclUnrealEssentials::FindComponentsOfByTag, "FindComponentsOfByTag");
+	this->bindstatic(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
+	this->bindstatic(&FPlatformMath::TruncToInt, "TruncToInt");
 
-	this->bindstatic<float, UObject*, FString>(&UTclUnrealEssentials::GENERAL_ACCESSOR<float>::CONCRETE, "AccessFloat");
-	this->bindstatic<void, UObject*, FString, float>(&UTclUnrealEssentials::GENERAL_MUTATOR<float>::CONCRETE, "MutateFloat");
+	this->bindconvert<USceneComponent, FVector>(&USceneComponent::GetComponentLocation, "GetComponentLocation");
+
+	this->bindstatic(&UTclUnrealEssentials::GENERAL_ACCESSOR<float>::CONCRETE, "AccessFloat");
+	this->bindstatic(&UTclUnrealEssentials::GENERAL_MUTATOR<float>::CONCRETE, "MutateFloat");
 	return TCL_OK;
 
 }

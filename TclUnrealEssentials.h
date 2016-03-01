@@ -60,21 +60,6 @@ private:
 			return TTuple<bool, float>(success, result);
 		}
 	};
-	// template<typename ReturnType, typename... ParamTypes> struct SPECIALIZED_ACCESSOR<TBaseDynamicMulticastDelegate<FWeakObjectPtr, ReturnType, ParamTypes...>> {
-	// 	FORCEINLINE static TTuple<bool, TBaseDynamicMulticastDelegate<FWeakObjectPtr, ReturnType, ParamTypes...>> ENGAGE(UObject* self, UProperty* prop) {  // no need to check for prop nullptr, already done in GENERAL_ACCESSOR
-	// 		auto result = TBaseDynamicMulticastDelegate<FWeakObjectPtr, ReturnType, ParamTypes...>();
-	// 		auto success = false;
-	// 		if(self != nullptr) {
-	// 			auto cast = Cast<UProperty>(prop);
-	// 			success = cast != nullptr;
-	// 			if (success) {
-	// 				auto valPtr = prop->ContainerPtrToValuePtr<TBaseDynamicMulticastDelegate<FWeakObjectPtr, ReturnType, ParamTypes...>>(self);
-	// 				result = *valPtr;
-	// 			}
-	// 		}
-	// 		return TTuple<bool, TBaseDynamicMulticastDelegate<FWeakObjectPtr, ReturnType, ParamTypes...>>(success, result);
-	// 	}
-	// };
 
 	template<typename ReturnType> struct SPECIALIZED_MUTATOR {
 		//kept empty to raise a compile time error if not used with a proper type
@@ -111,6 +96,9 @@ public:
 	static TSubclassOf<UObject> FindClass(FString);
 	static TArray<AActor*> AllActorsOf(UWorld*, TSubclassOf<AActor>);
 	static UActorComponent* FindComponentOf(AActor*, TSubclassOf<UActorComponent>);
+	static Tcl_Obj* LineTraceSingleByChannel(UWorld*, FVector, FVector, int32);
+	static Tcl_Obj* AddActorWorldOffset(AActor*, FVector, bool, int32);
+	static Tcl_Obj* FindComponentsOfByTag(AActor*, TSubclassOf<UActorComponent>, FName);
 	static Tcl_Obj* Purge(AActor*);
 	static int32 Eval(AActor*, FString, FString);
 

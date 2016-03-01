@@ -111,6 +111,39 @@ protected:
 		collector->Add(NEW_OBJ<First>::MAKE(head));
 		collect<Rest...>(collector, tail...);
 	}
+
+	template<typename F, typename ReturnType> struct BIND_CONVERT {
+		template<typename Cls, typename ...ParamTypes> FORCEINLINE static int IMPL(Tcl_Interp* interpreter, F f, FString name) {
+			if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+				const char* fname = TCHAR_TO_ANSI(*name);
+				auto del = new TBaseDelegate<ReturnType, Cls*, ParamTypes...>;
+				auto lam = [f](Cls* self, ParamTypes... params) -> ReturnType {
+					ReturnType result;
+					if(self != nullptr) { result = (self->*f)(params...); }
+					return result;
+				};
+				del->BindLambda(lam);
+				auto data = new WrapperContainer<TBaseDelegate<ReturnType, Cls*, ParamTypes...>>({ interpreter, name, del });
+				_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<ReturnType, Cls*, ParamTypes...>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<ReturnType, Cls*, ParamTypes...>>);
+				return TCL_OK;
+			}
+		}
+	};
+	template<typename F> struct BIND_CONVERT<F, void> {
+		template<typename Cls, typename ...ParamTypes> FORCEINLINE static int IMPL(Tcl_Interp* interpreter, F f, FString name) {
+			if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+				const char* fname = TCHAR_TO_ANSI(*name);
+				auto del = new TBaseDelegate<void, Cls*, ParamTypes...>;
+				auto lam = [f](Cls* self, ParamTypes... params) -> void {
+					if(self != nullptr) { (self->*f)(params...); }
+				};
+				del->BindLambda(lam);
+				auto data = new WrapperContainer<TBaseDelegate<void, Cls*, ParamTypes...>>({ interpreter, name, del });
+				_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<void, Cls*, ParamTypes...>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<void, Cls*, ParamTypes...>>);
+				return TCL_OK;
+			}
+		}
+	};
 public:	
 	UTclComponent();
 	virtual void BeginPlay() override;
@@ -197,7 +230,7 @@ public:
 			return TCL_OK;
 		}
 	}
-	template<typename Cls, typename ReturnType, typename ...ParamTypes> int bindconstmethod(Cls* self, ReturnType(Cls::*f)(ParamTypes...) const, FString name) {
+	template<typename Cls, typename ReturnType, typename ...ParamTypes> int bindmethod(Cls* self, ReturnType(Cls::*f)(ParamTypes...) const, FString name) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			const char* fname = TCHAR_TO_ANSI(*name);
 			auto del = new TBaseDelegate<ReturnType, ParamTypes...>;
@@ -216,6 +249,15 @@ public:
 			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<ReturnType, ParamTypes...>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>);
 			return TCL_OK;
 		}
+	}
+
+	template<typename Cls, typename ReturnType, typename ...ParamTypes> int bindconvert(ReturnType(Cls::*f)(ParamTypes...), FString name) {
+		typedef ReturnType(Cls::*F)(ParamTypes...);
+		return BIND_CONVERT<F, ReturnType>::IMPL<Cls, ParamTypes...>(interpreter, static_cast<F>(f), name);
+	}
+	template<typename Cls, typename ReturnType, typename ...ParamTypes> int bindconvert(ReturnType(Cls::*f)(ParamTypes...) const, FString name) {
+		typedef ReturnType(Cls::*F)(ParamTypes...) const;
+		return BIND_CONVERT<F, ReturnType>::IMPL<Cls, ParamTypes...>(interpreter, static_cast<F>(f), name);
 	}
 
 	template<typename T> int define(FString Location, T* ptr, FString Key = "", int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) {

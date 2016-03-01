@@ -34,6 +34,7 @@ TSubclassOf<UObject> UTclUnrealEssentials::FindClass(FString Name) {
 	auto cls = FindObjectSafe<UClass>(ANY_PACKAGE, *Name);
 	if(cls == nullptr || !cls->IsValidLowLevel()) { UE_LOG(LogClass, Warning, TEXT("Tcl warning: a class could not be found by the name of %s"), *Name) }
 	return cls;
+
 }
 TArray<AActor*> UTclUnrealEssentials::AllActorsOf(UWorld* World, TSubclassOf<AActor> Cls) {
 	TArray<AActor*> actors;
@@ -43,6 +44,28 @@ TArray<AActor*> UTclUnrealEssentials::AllActorsOf(UWorld* World, TSubclassOf<AAc
 }
 UActorComponent* UTclUnrealEssentials::FindComponentOf(AActor* Actor, TSubclassOf<UActorComponent> Cls) {
 	return Actor == nullptr? nullptr : Actor->FindComponentByClass(Cls);
+
+}
+Tcl_Obj* UTclUnrealEssentials::LineTraceSingleByChannel(UWorld* World, FVector Start, FVector End, int32 TraceChannelAsInt32) {
+	const FCollisionQueryParams Params;
+	const FCollisionResponseParams ResponseParam;
+	FHitResult Result;
+	auto Hit = World != nullptr && World->LineTraceSingleByChannel(Result, Start, End, TEnumAsByte<ECollisionChannel>(TraceChannelAsInt32));
+	return UTclComponent::pack(Hit, Result.ImpactPoint);
+
+}
+Tcl_Obj* UTclUnrealEssentials::AddActorWorldOffset(AActor* Actor, FVector Delta, bool Sweep, int32 TeleportAsInt32) {
+	FHitResult Result;
+	auto Hit = false;
+	if(Actor != nullptr) { Actor->AddActorWorldOffset(Delta, Sweep, &Result, TEnumAsByte<ETeleportType>(TeleportAsInt32)); }
+	return UTclComponent::pack(Hit, Result.ImpactPoint);
+
+}
+Tcl_Obj* UTclUnrealEssentials::FindComponentsOfByTag(AActor* Actor, TSubclassOf<UActorComponent> Cls, FName Tag) {
+	TArray<UActorComponent*> Components;
+	if(Actor != nullptr) { Components = Actor->GetComponentsByTag(Cls, Tag); }
+	return UTclComponent::convert(Components);
+
 }
 Tcl_Obj* UTclUnrealEssentials::Purge(AActor* Actor) {
 	Tcl_Obj* obj = nullptr;
