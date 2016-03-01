@@ -53,15 +53,15 @@ UTclComponent::UTclComponent(const FObjectInitializer& ObjectInitializer) : Supe
 }
 
 void UTclComponent::Fill(Tcl_Obj* obj) {
-	if(buffer != nullptr) { obj->refCount--; }  // _Tcl_DecrRefCount(buffer, __FILE__, __LINE__); }
+	if(buffer != nullptr) { buffer->refCount--; }
 	buffer = obj;
-	if(buffer != nullptr) { _Tcl_IncrRefCount(buffer, __FILE__, __LINE__); }
+	if(buffer != nullptr) { obj->refCount++; }
 
 }
 Tcl_Obj* UTclComponent::Purge() {
 	auto obj = buffer;
 	buffer = nullptr;
-	if(obj == nullptr) { obj = _Tcl_NewObj(); } else { obj->refCount--; }  // _Tcl_DecrRefCount(obj, __FILE__, __LINE__); }
+	if(obj == nullptr) { obj = _Tcl_NewObj(); } else { obj->refCount--; }
 	return obj;
 
 }
