@@ -93,7 +93,7 @@ int UTclComponent::init() {
 	this->bindstatic(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
 	this->bindstatic(&FPlatformMath::TruncToInt, "TruncToInt");
 
-	this->bindconvert<USceneComponent, FVector>(&USceneComponent::GetComponentLocation, "GetComponentLocation");
+	this->bindconvert(&USceneComponent::GetComponentLocation, "GetComponentLocation");
 	
 	this->bindstatic(&UTclUnrealEssentials::TypeOf, "TypeOf");
 	this->bindstatic(&UTclUnrealEssentials::PrintString, "PrintString");
