@@ -94,9 +94,13 @@ int UTclComponent::init() {
 	this->bindstatic(&FPlatformMath::TruncToInt, "TruncToInt");
 
 	this->bindconvert<USceneComponent, FVector>(&USceneComponent::GetComponentLocation, "GetComponentLocation");
+	
+	this->bindstatic(&UTclUnrealEssentials::TypeOf, "TypeOf");
+	this->bindstatic(&UTclUnrealEssentials::PrintString, "PrintString");
 
 	this->bindstatic(&UTclUnrealEssentials::GENERAL_ACCESSOR<float>::CONCRETE, "AccessFloat");
 	this->bindstatic(&UTclUnrealEssentials::GENERAL_MUTATOR<float>::CONCRETE, "MutateFloat");
+	
 	return TCL_OK;
 
 }

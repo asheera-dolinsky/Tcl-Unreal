@@ -101,6 +101,8 @@ public:
 	static Tcl_Obj* FindComponentsOfByTag(AActor*, TSubclassOf<UActorComponent>, FName);
 	static Tcl_Obj* Purge(AActor*);
 	static int32 Eval(AActor*, FString, FString);
+	static void PrintString(FString, int32);
+	static FString TypeOf(Tcl_Obj* obj);
 
 	template<typename Ret, typename Left, typename Right> struct ADD {
 		FORCEINLINE static Ret CONCRETE(Left First, Right Second) { return First + Second; }

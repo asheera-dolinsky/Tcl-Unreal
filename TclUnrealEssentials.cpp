@@ -47,8 +47,6 @@ UActorComponent* UTclUnrealEssentials::FindComponentOf(AActor* Actor, TSubclassO
 
 }
 Tcl_Obj* UTclUnrealEssentials::LineTraceSingleByChannel(UWorld* World, FVector Start, FVector End, int32 TraceChannelAsInt32) {
-	const FCollisionQueryParams Params;
-	const FCollisionResponseParams ResponseParam;
 	FHitResult Result;
 	auto Hit = World != nullptr && World->LineTraceSingleByChannel(Result, Start, End, TEnumAsByte<ECollisionChannel>(TraceChannelAsInt32));
 	return UTclComponent::pack(Hit, Result.ImpactPoint);
@@ -62,8 +60,7 @@ Tcl_Obj* UTclUnrealEssentials::AddActorWorldOffset(AActor* Actor, FVector Delta,
 
 }
 Tcl_Obj* UTclUnrealEssentials::FindComponentsOfByTag(AActor* Actor, TSubclassOf<UActorComponent> Cls, FName Tag) {
-	TArray<UActorComponent*> Components;
-	if(Actor != nullptr) { Components = Actor->GetComponentsByTag(Cls, Tag); }
+	auto Components = Actor == nullptr? TArray<UActorComponent*>() : Actor->GetComponentsByTag(Cls, Tag);
 	return UTclComponent::convert(Components);
 
 }
@@ -79,5 +76,20 @@ int32 UTclUnrealEssentials::Eval(AActor* Actor, FString Filename, FString Code) 
 	UTclComponent* comp = nullptr;
 	if(Actor != nullptr) { comp = Actor->FindComponentByClass<UTclComponent>(); } else { return TCL_ERROR; }
 	return (comp == nullptr)? TCL_ERROR : comp->Eval(Filename, Code);
+
+}
+
+void UTclUnrealEssentials::PrintString(FString name, int32 type) {
+	switch (type) {
+		case 1: UE_LOG(LogClass, Warning, TEXT("%s"), *name); break;
+		case 2: UE_LOG(LogClass, Error, TEXT("%s"), *name); break;
+		default: UE_LOG(LogClass, Log, TEXT("%s"), *name);
+	}
+}
+
+FString UTclUnrealEssentials::TypeOf(Tcl_Obj* obj) {
+	if (obj == nullptr) { return "nullptr"; }
+	if (obj->typePtr == nullptr) { return "unknown"; }
+	return obj->typePtr->name;
 
 }

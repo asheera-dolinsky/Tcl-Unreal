@@ -260,20 +260,13 @@ public:
 		return BIND_CONVERT<F, ReturnType>::IMPL<Cls, ParamTypes...>(interpreter, static_cast<F>(f), name);
 	}
 
-	template<typename T> int define(FString Location, T* ptr, FString Key = "", int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) {
-		static const auto tname = std::is_base_of<UObject, T>::value? "UObject" : IS_TARRAY<T>::OF_UOBJECTS? "TArray of UObjects" : IS_TSUBCLASSOF<T>::OF_UOBJECTS? "TSubclassOf of UObjects" : typeid(T).name();
-		static const FString tnameconv = tname;
-		static const Tcl_ObjType type = { tname, &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
+	template<typename T> int define(FString Location, T val, FString Key = "", int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
-			auto val = _Tcl_NewObj();
-			val->internalRep.otherValuePtr = static_cast<ClientData>(ptr);
-			val->typePtr = &type;
+			auto obj = UTclComponent::NEW_OBJ<T>::MAKE(val);
 			if (Key.IsEmpty()) {
-				*val = *(_Tcl_SetVar2Ex(interpreter, TCHAR_TO_ANSI(*Location), nullptr, val, flags));
-				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s for Tcl"), *tnameconv, *Location)
+				_Tcl_SetVar2Ex(interpreter, TCHAR_TO_ANSI(*Location), nullptr, obj, flags);
 			} else {
-				*val = *(_Tcl_SetVar2Ex(interpreter, TCHAR_TO_ANSI(*Location), TCHAR_TO_ANSI(*Key), val, flags));
-				UE_LOG(LogClass, Log, TEXT("Object of type %s defined in %s(%s) for Tcl"), *tnameconv, *Location, *Key)
+				_Tcl_SetVar2Ex(interpreter, TCHAR_TO_ANSI(*Location), TCHAR_TO_ANSI(*Key), obj, flags);
 			}
 			return TCL_OK;
 		}
