@@ -112,6 +112,10 @@ int UTclComponent::init() {
 
 	this->bindflatconvert(&FVector::GetSafeNormal, "GetSafeNormal");
 	this->bindconvert(&AActor::GetDistanceTo, "GetDistanceTo");
+
+	this->bindconvert(&AActor::GetActorForwardVector, "GetActorForwardVector");
+	this->bindconvert(&AActor::GetActorRightVector, "GetActorRightVector");
+	this->bindconvert(&AActor::GetActorUpVector, "GetActorUpVector");
 	
 	return TCL_OK;
 

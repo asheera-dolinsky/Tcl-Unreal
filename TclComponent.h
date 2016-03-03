@@ -340,6 +340,26 @@ public:
 			return _Tcl_NewBooleanObj(val);
 		}
 	};
+	template<> struct NEW_OBJ<int8> {
+		FORCEINLINE static Tcl_Obj* MAKE(int8 val) {
+			return _Tcl_NewLongObj(val);
+		}
+	};
+	template<> struct NEW_OBJ<uint8> {
+		FORCEINLINE static Tcl_Obj* MAKE(uint8 val) {
+			return _Tcl_NewLongObj(val);
+		}
+	};
+	template<> struct NEW_OBJ<int16> {
+		FORCEINLINE static Tcl_Obj* MAKE(int16 val) {
+			return _Tcl_NewLongObj(val);
+		}
+	};
+	template<> struct NEW_OBJ<uint16> {
+		FORCEINLINE static Tcl_Obj* MAKE(uint16 val) {
+			return _Tcl_NewLongObj(val);
+		}
+	};
 	template<> struct NEW_OBJ<int32> {
 		FORCEINLINE static Tcl_Obj* MAKE(int32 val) {
 			return _Tcl_NewLongObj(val);
@@ -521,6 +541,38 @@ template<> struct IMPL_CONVERT<bool> {  // bool
 		return result;
 	}
 };
+template<> struct IMPL_CONVERT<int8> {  // int8
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int8* val) {
+		long in = 0;
+		auto result = UTclComponent::get_Tcl_GetLongFromObj()(interpreter, obj, &in);
+		*val = static_cast<int8>(in);
+		return result;
+	}
+};
+template<> struct IMPL_CONVERT<uint8> {  // uint8
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, uint8* val) {
+		long in = 0;
+		auto result = UTclComponent::get_Tcl_GetLongFromObj()(interpreter, obj, &in);
+		*val = static_cast<uint8>(in);
+		return result;
+	}
+};
+template<> struct IMPL_CONVERT<int16> {  // int16
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int16* val) {
+		long in = 0;
+		auto result = UTclComponent::get_Tcl_GetLongFromObj()(interpreter, obj, &in);
+		*val = static_cast<int16>(in);
+		return result;
+	}
+};
+template<> struct IMPL_CONVERT<uint16> {  // uint16
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, uint16* val) {
+		long in = 0;
+		auto result = UTclComponent::get_Tcl_GetLongFromObj()(interpreter, obj, &in);
+		*val = static_cast<uint16>(in);
+		return result;
+	}
+};
 template<> struct IMPL_CONVERT<int32> {  // int32
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, int32* val) {
 		long in = 0;
@@ -529,7 +581,7 @@ template<> struct IMPL_CONVERT<int32> {  // int32
 		return result;
 	}
 };
-template<> struct IMPL_CONVERT<uint32> {  // int32
+template<> struct IMPL_CONVERT<uint32> {  // uint32
 	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, uint32* val) {
 		long in = 0;
 		auto result = UTclComponent::get_Tcl_GetLongFromObj()(interpreter, obj, &in);
@@ -618,6 +670,30 @@ template<> struct PROCESS_RETURN<bool> {
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
+template<> struct PROCESS_RETURN<int8> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, int8 val) {
+		auto obj = UTclComponent::NEW_OBJ<int8>::MAKE(val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template<> struct PROCESS_RETURN<uint8> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, uint8 val) {
+		auto obj = UTclComponent::NEW_OBJ<uint8>::MAKE(val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template<> struct PROCESS_RETURN<int16> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, int16 val) {
+		auto obj = UTclComponent::NEW_OBJ<int16>::MAKE(val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template<> struct PROCESS_RETURN<uint16> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, uint16 val) {
+		auto obj = UTclComponent::NEW_OBJ<uint16>::MAKE(val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
 template<> struct PROCESS_RETURN<int32> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, int32 val) {
 		auto obj = UTclComponent::NEW_OBJ<int32>::MAKE(val);
@@ -633,6 +709,12 @@ template<> struct PROCESS_RETURN<uint32> {
 template<> struct PROCESS_RETURN<int64> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, int64 val) {
 		auto obj = UTclComponent::NEW_OBJ<int64>::MAKE(val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
+template<> struct PROCESS_RETURN<uint64> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, uint64 val) {
+		auto obj = UTclComponent::NEW_OBJ<uint64>::MAKE(val);
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
