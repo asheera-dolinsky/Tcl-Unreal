@@ -52,6 +52,14 @@ Tcl_Obj* UTclUnrealEssentials::LineTraceSingleByChannel(UWorld* World, FVector S
 	return UTclComponent::pack(Hit, Result.ImpactPoint);
 
 }
+FVector UTclUnrealEssentials::GetActorLocation(AActor* Actor) { return Actor == nullptr? FVector(0.f, 0.f, 0.f) : Actor->GetActorLocation(); }
+Tcl_Obj* UTclUnrealEssentials::SetActorLocation(AActor* Actor, FVector Delta, bool Sweep, int32 TeleportAsInt32) {
+	FHitResult Result;
+	auto Hit = false;
+	if (Actor != nullptr) { Actor->SetActorLocation(Delta, Sweep, &Result, TEnumAsByte<ETeleportType>(TeleportAsInt32)); }
+	return UTclComponent::pack(Hit, Result.ImpactPoint);
+
+}
 Tcl_Obj* UTclUnrealEssentials::AddActorWorldOffset(AActor* Actor, FVector Delta, bool Sweep, int32 TeleportAsInt32) {
 	FHitResult Result;
 	auto Hit = false;

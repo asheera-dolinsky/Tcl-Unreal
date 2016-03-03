@@ -97,6 +97,8 @@ public:
 	static TArray<AActor*> AllActorsOf(UWorld*, TSubclassOf<AActor>);
 	static UActorComponent* FindComponentOf(AActor*, TSubclassOf<UActorComponent>);
 	static Tcl_Obj* LineTraceSingleByChannel(UWorld*, FVector, FVector, int32);
+	static FVector GetActorLocation(AActor*);
+	static Tcl_Obj* SetActorLocation(AActor*, FVector, bool, int32);
 	static Tcl_Obj* AddActorWorldOffset(AActor*, FVector, bool, int32);
 	static Tcl_Obj* FindComponentsOfByTag(AActor*, TSubclassOf<UActorComponent>, FName);
 	static Tcl_Obj* Purge(AActor*);
@@ -106,6 +108,12 @@ public:
 
 	template<typename Ret, typename Left, typename Right> struct ADD {
 		FORCEINLINE static Ret CONCRETE(Left First, Right Second) { return First + Second; }
+	};
+	template<typename Ret, typename Left, typename Right> struct SUB {
+		FORCEINLINE static Ret CONCRETE(Left First, Right Second) { return First - Second; }
+	};
+	template<typename Ret, typename Left, typename Right> struct MUL {
+		FORCEINLINE static Ret CONCRETE(Left First, Right Second) { return First * Second; }
 	};
 	template<typename Ret, typename Left, typename Right> struct DIV {
 		FORCEINLINE static Ret CONCRETE(Left First, Right Second) { return First / Second; }

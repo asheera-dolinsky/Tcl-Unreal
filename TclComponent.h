@@ -35,6 +35,7 @@
 #include "TupleUtils.hpp"
 #include "Components/ActorComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "TclUnrealEssentials.h"
 #include "TclComponent.generated.h"
 
@@ -363,6 +364,11 @@ public:
 			return _Tcl_NewDoubleObj(val);
 		}
 	};
+	template<> struct NEW_OBJ<double> {
+		FORCEINLINE static Tcl_Obj* MAKE(double val) {
+			return _Tcl_NewDoubleObj(val);
+		}
+	};
 	template<> struct NEW_OBJ<FString> {
 		FORCEINLINE static Tcl_Obj* MAKE(FString val) {
 			return _Tcl_NewStringObj(TCHAR_TO_ANSI(*val), -1);
@@ -552,6 +558,11 @@ template<> struct IMPL_CONVERT<float> {  // float
 		auto result = UTclComponent::get_Tcl_GetDoubleFromObj()(interpreter, obj, &in);
 		*val = static_cast<float>(in);
 		return result;
+	}
+};
+template<> struct IMPL_CONVERT<double> {  // double
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, double* val) {
+		return UTclComponent::get_Tcl_GetDoubleFromObj()(interpreter, obj, val);;
 	}
 };
 template<> struct IMPL_CONVERT<FString> {  // FString

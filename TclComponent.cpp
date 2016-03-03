@@ -72,34 +72,46 @@ int UTclComponent::init() {
 	auto val = _Tcl_NewObj();
 	val->typePtr = &type;
 	*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
-	this->bindstatic(&UTclUnrealEssentials::Eval, "Eval");
-	this->bindmethod<UTclComponent, void, Tcl_Obj*>(this, &UTclComponent::Fill, "Fill");
-	this->bindstatic(&UTclUnrealEssentials::Purge, "Purge");
-	this->bindmethod<UTclComponent, Tcl_Obj*>(this, &UTclComponent::Purge, "PurgeSelf");
-	this->bindstatic(&UTclUnrealEssentials::GENERAL_CONVERTER<UObject*>::CONCRETE, "Convert");
-	this->bindmethod<UTclComponent, UWorld*>(this, &UTclComponent::GetWorld, "GetWorld");
-	this->bindstatic(&UGameplayStatics::GetPlayerController, "GetPlayerController");
+	
 	this->bindstatic(&UTclUnrealEssentials::FindClass, "FindClass");
 	this->bindstatic(&UTclUnrealEssentials::AllActorsOf, "AllActorsOf");
 	this->bindstatic(&UTclUnrealEssentials::FindComponentOf, "FindComponentOf");
-	this->bindstatic(&UTclUnrealEssentials::MAKE<FVector, float, float, float>::CONCRETE, "MakeVector");
-	this->bindstatic(&UTclUnrealEssentials::ADD<FVector, FVector, FVector>::CONCRETE, "AddVectors");
-	this->bindstatic(&UTclUnrealEssentials::DIV<FVector, FVector, float>::CONCRETE, "DivideVectorByScalar");
-	this->bindstatic(&UTclUnrealEssentials::MAKE<FRotator, float, float, float>::CONCRETE, "MakeRotator");
-	this->bindstatic(&UTclUnrealEssentials::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
 	this->bindstatic(&UTclUnrealEssentials::LineTraceSingleByChannel, "LineTraceSingleByChannel");
+	this->bindstatic(&UTclUnrealEssentials::GetActorLocation, "GetActorLocation");
+	this->bindstatic(&UTclUnrealEssentials::SetActorLocation, "SetActorLocation");
 	this->bindstatic(&UTclUnrealEssentials::AddActorWorldOffset, "AddActorWorldOffset");
 	this->bindstatic(&UTclUnrealEssentials::FindComponentsOfByTag, "FindComponentsOfByTag");
-	this->bindstatic(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
-	this->bindstatic(&FPlatformMath::TruncToInt, "TruncToInt");
-
-	this->bindconvert(&USceneComponent::GetComponentLocation, "GetComponentLocation");
-	
 	this->bindstatic(&UTclUnrealEssentials::TypeOf, "TypeOf");
 	this->bindstatic(&UTclUnrealEssentials::PrintString, "PrintString");
+	this->bindstatic(&UTclUnrealEssentials::Eval, "Eval");
+	this->bindstatic(&UTclUnrealEssentials::Purge, "Purge");
+	this->bindstatic(&UTclUnrealEssentials::MAKE<FVector, float, float, float>::CONCRETE, "MakeVector");
+	this->bindstatic(&UTclUnrealEssentials::MAKE<FRotator, float, float, float>::CONCRETE, "MakeRotator");
+	this->bindstatic(&UTclUnrealEssentials::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
+	this->bindstatic(&UTclUnrealEssentials::ADD<FVector, FVector, FVector>::CONCRETE, "AddVectors");
+	this->bindstatic(&UTclUnrealEssentials::SUB<FVector, FVector, FVector>::CONCRETE, "SubstractVectors");
+	this->bindstatic(&UTclUnrealEssentials::MUL<FVector, FVector, float>::CONCRETE, "MultiplyVectorByScalar");
+	this->bindstatic(&UTclUnrealEssentials::DIV<FVector, FVector, float>::CONCRETE, "DivideVectorByScalar");
+	this->bindstatic(&UTclUnrealEssentials::GENERAL_CONVERTER<UObject*>::CONCRETE, "Convert");
 
 	this->bindstatic(&UTclUnrealEssentials::GENERAL_ACCESSOR<float>::CONCRETE, "AccessFloat");
 	this->bindstatic(&UTclUnrealEssentials::GENERAL_MUTATOR<float>::CONCRETE, "MutateFloat");
+
+	this->bindmethod<UTclComponent, void, Tcl_Obj*>(this, &UTclComponent::Fill, "Fill");
+	this->bindmethod<UTclComponent, Tcl_Obj*>(this, &UTclComponent::Purge, "PurgeSelf");
+	this->bindmethod<UTclComponent, UWorld*>(this, &UTclComponent::GetWorld, "GetWorld");
+	this->bindstatic(&UGameplayStatics::GetPlayerController, "GetPlayerController");
+	this->bindstatic(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
+	this->bindstatic(&UKismetMathLibrary::RandomInteger, "RandomInteger");
+	this->bindstatic(&FPlatformMath::TruncToInt, "TruncToInt");
+	this->bindconvert(&USceneComponent::GetComponentLocation, "GetComponentLocation");
+
+	this->bindstatic(&FString::FromInt, "IntToString");
+	this->bindstatic(&FString::SanitizeFloat, "FloatToString");
+	this->bindflatconvert(&FVector::ToString, "VectorToString");
+
+	this->bindflatconvert(&FVector::GetSafeNormal, "GetSafeNormal");
+	//this->bindflatconvert(&FVector::Dist, "Dist");
 	
 	return TCL_OK;
 
