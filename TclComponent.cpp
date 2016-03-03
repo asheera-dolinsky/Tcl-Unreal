@@ -111,7 +111,7 @@ int UTclComponent::init() {
 	this->bindflatconvert(&FVector::ToString, "VectorToString");
 
 	this->bindflatconvert(&FVector::GetSafeNormal, "GetSafeNormal");
-	//this->bindflatconvert(&FVector::Dist, "Dist");
+	this->bindconvert(&AActor::GetDistanceTo, "GetDistanceTo");
 	
 	return TCL_OK;
 

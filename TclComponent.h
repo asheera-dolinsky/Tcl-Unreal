@@ -112,7 +112,7 @@ protected:
 		collector->Add(NEW_OBJ<First>::MAKE(head));
 		collect<Rest...>(collector, tail...);
 	}
-
+#pragma warning(disable:4701)
 	template<typename F, typename ReturnType> struct BIND_CONVERT {
 		template<typename Cls, typename ...ParamTypes> FORCEINLINE static int IMPL(Tcl_Interp* interpreter, F f, FString name) {
 			if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
@@ -173,6 +173,7 @@ protected:
 			}
 		}
 	};
+#pragma warning(default:4701)
 public:	
 	UTclComponent();
 	virtual void BeginPlay() override;
@@ -688,7 +689,7 @@ template<typename ReturnType, typename ...ParamTypes> struct TCL_WRAPPER {
 		get<0>(values) = data;
 		auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...>>(interpreter, arguments, values);
 		if(!ok) {
-			UE_LOG(LogClass, Error, TEXT("Tcl: the offending proc's name is %d"), *(data->name))
+			UE_LOG(LogClass, Error, TEXT("Tcl: the offending proc's name is %s"), *(data->name))
 			return TCL_ERROR;
 		}
 		ok = apply(&COMPILE_DELEGATE_ON_PARAMS<ReturnType>::GO<ParamTypes...>, values);
