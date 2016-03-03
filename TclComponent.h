@@ -43,14 +43,14 @@
 template<int> struct POPULATE;
 
 template<int numberOfParams> struct COMPILE_ON_PARAMS {
-	template<typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
+	template<typename TupleSpecialization> FORCEINLINE static bool EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
 		Tcl_Obj* objects[numberOfParams];
 		for (int i=0; i<numberOfParams; i++) { objects[i] = const_cast<Tcl_Obj*>(arguments[i+1]); }
-		return POPULATE<numberOfParams>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
+		return POPULATE<numberOfParams>::FROM<TupleSpecialization>(interpreter, values, objects);
 	}
 };
 template<> struct COMPILE_ON_PARAMS<0> {
-	template<typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
+	template<typename TupleSpecialization> FORCEINLINE static bool EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
 		return true;
 	}
 };
@@ -588,13 +588,13 @@ template<> struct IMPL_CONVERT<Tcl_Obj*> {  // Tcl_Obj*
 };
 
 template<int idx> struct POPULATE {
-	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
+	template <typename TupleSpecialization> FORCEINLINE static bool FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
 		auto result = IMPL_CONVERT<std::tuple_element<idx, TupleSpecialization>::type>::CALL(interpreter, objects[idx-1], &(get<idx>(values)));
-		return !(result == _TCL_BOOTSTRAP_FAIL_ || result == TCL_ERROR) && POPULATE<idx-1>::FROM<TupleSpecialization, ParamTypes...>(interpreter, values, objects);
+		return !(result == _TCL_BOOTSTRAP_FAIL_ || result == TCL_ERROR) && POPULATE<idx-1>::FROM<TupleSpecialization>(interpreter, values, objects);
 	}
 };
 template<> struct POPULATE<0> {
-	template <typename TupleSpecialization, typename ...ParamTypes> FORCEINLINE static bool FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
+	template <typename TupleSpecialization> FORCEINLINE static bool FROM(Tcl_Interp* interpreter, TupleSpecialization& values, Tcl_Obj* objects[]) {
 		return true;
 	}
 };
@@ -686,7 +686,7 @@ template<typename ReturnType, typename ...ParamTypes> struct TCL_WRAPPER {
 		}
 		tuple<WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...> values;
 		get<0>(values) = data;
-		auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...>, ParamTypes...>(interpreter, arguments, values);
+		auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...>>(interpreter, arguments, values);
 		if(!ok) {
 			UE_LOG(LogClass, Error, TEXT("Tcl: the offending proc's name is %d"), *(data->name))
 			return TCL_ERROR;
