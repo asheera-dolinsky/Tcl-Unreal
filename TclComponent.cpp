@@ -117,6 +117,9 @@ int UTclComponent::init() {
 	this->bindconvert(&AActor::GetActorRightVector, "GetActorRightVector");
 	this->bindconvert(&AActor::GetActorUpVector, "GetActorUpVector");
 	
+	this->bindflatconvert(&FVector::Equals, "VectorEquals");
+	this->bindstatic(&FVector::Dist, "Dist");
+
 	return TCL_OK;
 
 }

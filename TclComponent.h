@@ -498,6 +498,12 @@ template<typename T> struct IMPL_CONVERT {  // UStruct, TArray<T>, TSubclassOf<T
 		}
 	}
 };
+template<typename T> struct IMPL_CONVERT<const T> {
+	FORCEINLINE static int CALL(Tcl_Interp* interpreter, Tcl_Obj* obj, const T* val) {
+		T* valStripped = const_cast<T*>(val);
+		return IMPL_CONVERT<T>::CALL(interpreter, obj, valStripped);
+	}
+};
 template<typename T> struct IMPL_CONVERT<T*> {  // Pointers
 	template<bool> FORCEINLINE static int ON_UOBJECT(Tcl_Interp* interpreter, Tcl_Obj* obj, T** val, FString parentType, FString gottenType) {
 		return _TCL_SKIP_;
@@ -749,23 +755,23 @@ template<> struct PROCESS_RETURN<Tcl_Obj*> {
 	}
 };
 
-template<typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
-	template<typename ...ParamTypes> FORCEINLINE static bool GO(WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>* data, ParamTypes... args) {
-		if(data->del->IsBound()) { 
+template<typename T, typename ReturnType> struct COMPILE_DELEGATE_ON_PARAMS {
+	template<typename ...ParamTypes> FORCEINLINE static bool GO(T* data, ParamTypes... args) {
+		if(data->del->IsBound()) {
 			auto ret = data->del->Execute(args...);
 			PROCESS_RETURN<ReturnType>::USE(data->interpreter, ret);
 		}
 		return data->del->IsBound();
 	}
 };
-template<> struct COMPILE_DELEGATE_ON_PARAMS<void> {
-	template<typename ...ParamTypes> FORCEINLINE static bool GO(WrapperContainer<TBaseDelegate<void, ParamTypes...>>* data, ParamTypes... args) {
+template<typename T> struct COMPILE_DELEGATE_ON_PARAMS<T, void> {
+	template<typename ...ParamTypes> FORCEINLINE static bool GO(T* data, ParamTypes... args) {
 		return data->del->ExecuteIfBound(args...);
 	}
 };
 
 template<typename ReturnType, typename ...ParamTypes> struct TCL_WRAPPER {
-	FORCEINLINE static int RUN(ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) {
+	template<typename ...StrippedParamTypes> FORCEINLINE static int RUN_INNER(ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) {
 		const int numberOfParams = sizeof...(ParamTypes);
 		numberOfArgs--;  // proc is counted too
 		auto data = static_cast<WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>*>(clientData);
@@ -773,14 +779,17 @@ template<typename ReturnType, typename ...ParamTypes> struct TCL_WRAPPER {
 			UE_LOG(LogClass, Error, TEXT("Tcl: number of arguments to %s : number of arguments = %d isn't equal to the number of parameters = %d"), *(data->name), numberOfArgs, numberOfParams)
 			return TCL_ERROR;
 		}
-		tuple<WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...> values;
+		tuple<WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>*, typename std::remove_reference<StrippedParamTypes>::type...> values;
 		get<0>(values) = data;
-		auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>*, ParamTypes...>>(interpreter, arguments, values);
-		if(!ok) {
+		auto ok = COMPILE_ON_PARAMS<numberOfParams>::EXEC<tuple<WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>*, typename std::remove_reference<StrippedParamTypes>::type...>>(interpreter, arguments, values);
+		if (!ok) {
 			UE_LOG(LogClass, Error, TEXT("Tcl: the offending proc's name is %s"), *(data->name))
 			return TCL_ERROR;
 		}
-		ok = apply(&COMPILE_DELEGATE_ON_PARAMS<ReturnType>::GO<ParamTypes...>, values);
+		ok = apply(&COMPILE_DELEGATE_ON_PARAMS<WrapperContainer<TBaseDelegate<ReturnType, ParamTypes...>>, ReturnType>::GO<typename std::remove_reference<StrippedParamTypes>::type...>, values);
 		return ok? TCL_OK : TCL_ERROR;
+	}
+	FORCEINLINE static int RUN(ClientData clientData, Tcl_Interp* interpreter, int numberOfArgs, Tcl_Obj* const arguments[]) {
+		return RUN_INNER<typename std::remove_const<ParamTypes>::type...>(clientData, interpreter, numberOfArgs, arguments);
 	}
 };

@@ -24,6 +24,10 @@
 
 #include <tuple>
 using namespace std;
+
+template <typename... T> using tuple_stripped_intermediary = tuple<typename remove_reference<T>::type...>;
+template <typename... T> using tuple_stripped = tuple_stripped_intermediary<typename remove_cv<T>::type...>;
+
 // Helpers
 template<int...> struct index_tuple {};
 template<int I, typename IndexTuple, typename ...Types> struct make_indexes_impl;
@@ -34,15 +38,15 @@ struct make_indexes_impl<I, index_tuple<Indexes...>, T, Types...> {
 template<int I, int ...Indexes> struct make_indexes_impl<I, index_tuple<Indexes...> > { typedef index_tuple<Indexes...> type; };
 template<typename ...Types> struct make_indexes : make_indexes_impl<0, index_tuple<>, Types...> {};
 // Unpack and Apply
-template<class Ret, class ...Args, int ...Indexes >
-Ret apply_helper(Ret(*pf)(Args...), index_tuple<Indexes...>, tuple<Args...>&& tup) {
+template<typename Ret, typename ...Args, int ...Indexes >
+Ret apply_helper(Ret(*pf)(Args...), index_tuple<Indexes...>, tuple_stripped<Args...>&& tup) {
 	return pf(forward<Args>(get<Indexes>(tup))...);
 }
-template<class Ret, class ...Args>
-Ret apply(Ret(*pf)(Args...), const tuple<Args...>& tup) {
-	return apply_helper(pf, typename make_indexes<Args...>::type(), tuple<Args...>(tup));
+template<typename Ret, typename ...Args>
+Ret apply(Ret(*pf)(Args...), const tuple_stripped<Args...>& tup) {
+	return apply_helper(pf, typename make_indexes<Args...>::type(), tuple_stripped<Args...>(tup));
 }
-template<class Ret, class ...Args>
-Ret apply(Ret(*pf)(Args...), tuple<Args...>&& tup) {
-	return apply_helper(pf, typename make_indexes<Args...>::type(), forward<tuple<Args...>>(tup));
+template<typename Ret, typename ...Args>
+Ret apply(Ret(*pf)(Args...), tuple_stripped<Args...>&& tup) {
+	return apply_helper(pf, typename make_indexes<Args...>::type(), forward<tuple_stripped<Args...>>(tup));
 }
