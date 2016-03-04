@@ -724,6 +724,12 @@ template<> struct PROCESS_RETURN<float> {
 		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
 	}
 };
+template<> struct PROCESS_RETURN<double> {
+	FORCEINLINE static void USE(Tcl_Interp* interpreter, double val) {
+		auto obj = UTclComponent::NEW_OBJ<double>::MAKE(val);
+		UTclComponent::get_Tcl_SetObjResult()(interpreter, obj);
+	}
+};
 template<> struct PROCESS_RETURN<FString> {
 	FORCEINLINE static void USE(Tcl_Interp* interpreter, FString val) {
 		auto obj = UTclComponent::NEW_OBJ<FString>::MAKE(val);
