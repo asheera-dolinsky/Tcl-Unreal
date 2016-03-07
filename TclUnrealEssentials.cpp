@@ -86,7 +86,6 @@ int32 UTclUnrealEssentials::Eval(AActor* Actor, FString Filename, FString Code) 
 	return (comp == nullptr)? TCL_ERROR : comp->Eval(Filename, Code);
 
 }
-
 void UTclUnrealEssentials::PrintString(FString name, int32 type) {
 	switch (type) {
 		case 1: UE_LOG(LogClass, Warning, TEXT("%s"), *name); break;
@@ -94,10 +93,15 @@ void UTclUnrealEssentials::PrintString(FString name, int32 type) {
 		default: UE_LOG(LogClass, Log, TEXT("%s"), *name);
 	}
 }
-
 FString UTclUnrealEssentials::TypeOf(Tcl_Obj* obj) {
 	if (obj == nullptr) { return "nullptr"; }
 	if (obj->typePtr == nullptr) { return "unknown"; }
 	return obj->typePtr->name;
+
+}
+Tcl_Obj* UTclUnrealEssentials::SweepSingleByChannel(UWorld* World, FVector Start, FVector End, FQuat Rot, FCollisionShape Shape, int32 TraceChannelAsInt32) {
+	FHitResult OutHit;
+	auto Hit = World != nullptr && World->SweepSingleByChannel(OutHit, Start, End, Rot, TEnumAsByte<ECollisionChannel>(TraceChannelAsInt32), Shape, FCollisionQueryParams::DefaultQueryParam, FCollisionResponseParams::DefaultResponseParam);
+	return UTclComponent::pack(Hit, OutHit.ImpactPoint);
 
 }

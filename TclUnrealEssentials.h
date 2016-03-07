@@ -97,6 +97,7 @@ public:
 	static TArray<AActor*> AllActorsOf(UWorld*, TSubclassOf<AActor>);
 	static UActorComponent* FindComponentOf(AActor*, TSubclassOf<UActorComponent>);
 	static Tcl_Obj* LineTraceSingleByChannel(UWorld*, FVector, FVector, int32);
+	static Tcl_Obj* SweepSingleByChannel(UWorld*, FVector, FVector, FQuat, FCollisionShape, int32);
 	static FVector GetActorLocation(AActor*);
 	static Tcl_Obj* SetActorLocation(AActor*, FVector, bool, int32);
 	static Tcl_Obj* AddActorWorldOffset(AActor*, FVector, bool, int32);

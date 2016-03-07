@@ -297,7 +297,68 @@ public:
 		typedef ReturnType(Cls::*F)(ParamTypes...) const;
 		return BIND_FLAT_CONVERT<F, ReturnType>::IMPL<Cls, ParamTypes...>(interpreter, static_cast<F>(f), name);
 	}
-
+#pragma warning(disable:4701)
+	template<typename Cls, typename ReturnType> int bindaccessor(ReturnType Cls::*ptr, FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		else {
+			const char* fname = TCHAR_TO_ANSI(*name);
+			auto del = new TBaseDelegate<ReturnType, Cls*>;
+			auto lam = [ptr](Cls* self) -> ReturnType {
+				ReturnType result;
+				if (self != nullptr) { result = (self->*ptr); }
+				return result;
+			};
+			del->BindLambda(lam);
+			auto data = new WrapperContainer<TBaseDelegate<ReturnType, Cls*>>({ interpreter, name, del });
+			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<ReturnType, Cls*>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<ReturnType, Cls*>>);
+			return TCL_OK;
+		}
+	}
+	template<typename Cls, typename InputType> int bindmutator(InputType Cls::*ptr, FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		else {
+			const char* fname = TCHAR_TO_ANSI(*name);
+			auto del = new TBaseDelegate<void, Cls*, InputType>;
+			auto lam = [ptr](Cls* self, InputType val) -> void {
+				if (self != nullptr) { (self->*ptr) = val; }
+			};
+			del->BindLambda(lam);
+			auto data = new WrapperContainer<TBaseDelegate<void, Cls*, InputType>>({ interpreter, name, del });
+			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<void, Cls*, InputType>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<void, Cls*, InputType>>);
+			return TCL_OK;
+		}
+	}
+	template<typename Cls, typename ReturnType> int bindflataccessor(ReturnType Cls::*ptr, FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		else {
+			const char* fname = TCHAR_TO_ANSI(*name);
+			auto del = new TBaseDelegate<ReturnType, Cls*>;
+			auto lam = [ptr](Cls* self) -> ReturnType {
+				ReturnType result;
+				if (self != nullptr) { result = (self.*ptr); }
+				return result;
+			};
+			del->BindLambda(lam);
+			auto data = new WrapperContainer<TBaseDelegate<ReturnType, Cls*>>({ interpreter, name, del });
+			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<ReturnType, Cls*>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<ReturnType, Cls*>>);
+			return TCL_OK;
+		}
+	}
+	template<typename Cls, typename InputType> int bindflatmutator(InputType Cls::*ptr, FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		else {
+			const char* fname = TCHAR_TO_ANSI(*name);
+			auto del = new TBaseDelegate<void, Cls*, InputType>;
+			auto lam = [ptr](Cls* self, InputType val) -> void {
+				if (self != nullptr) { (self.*ptr) = val; }
+			};
+			del->BindLambda(lam);
+			auto data = new WrapperContainer<TBaseDelegate<void, Cls*, InputType>>({ interpreter, name, del });
+			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<void, Cls*, InputType>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<void, Cls*, InputType>>);
+			return TCL_OK;
+		}
+	}
+#pragma warning(default:4701)
 	template<typename T> int define(FString Location, T val, FString Key = "", int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto obj = UTclComponent::NEW_OBJ<T>::MAKE(val);

@@ -77,6 +77,7 @@ int UTclComponent::init() {
 	this->bindstatic(&UTclUnrealEssentials::AllActorsOf, "AllActorsOf");
 	this->bindstatic(&UTclUnrealEssentials::FindComponentOf, "FindComponentOf");
 	this->bindstatic(&UTclUnrealEssentials::LineTraceSingleByChannel, "LineTraceSingleByChannel");
+	this->bindstatic(&UTclUnrealEssentials::SweepSingleByChannel, "SweepSingleByChannel");
 	this->bindstatic(&UTclUnrealEssentials::GetActorLocation, "GetActorLocation");
 	this->bindstatic(&UTclUnrealEssentials::SetActorLocation, "SetActorLocation");
 	this->bindstatic(&UTclUnrealEssentials::AddActorWorldOffset, "AddActorWorldOffset");
@@ -87,6 +88,7 @@ int UTclComponent::init() {
 	this->bindstatic(&UTclUnrealEssentials::Purge, "Purge");
 	this->bindstatic(&UTclUnrealEssentials::MAKE<FVector, float, float, float>::CONCRETE, "MakeVector");
 	this->bindstatic(&UTclUnrealEssentials::MAKE<FRotator, float, float, float>::CONCRETE, "MakeRotator");
+	this->bindstatic(&UTclUnrealEssentials::MAKE<FQuat, FVector, float>::CONCRETE, "MakeQuat");
 	this->bindstatic(&UTclUnrealEssentials::MAKE<FLinearColor, float, float, float, float>::CONCRETE, "MakeColor");
 	this->bindstatic(&UTclUnrealEssentials::ADD<FVector, FVector, FVector>::CONCRETE, "AddVectors");
 	this->bindstatic(&UTclUnrealEssentials::SUB<FVector, FVector, FVector>::CONCRETE, "SubstractVectors");
@@ -102,6 +104,7 @@ int UTclComponent::init() {
 	this->bindmethod<UTclComponent, UWorld*>(this, &UTclComponent::GetWorld, "GetWorld");
 	this->bindstatic(&UGameplayStatics::GetPlayerController, "GetPlayerController");
 	this->bindstatic(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
+	this->bindstatic(&UKismetSystemLibrary::DrawDebugSphere, "DrawDebugSphere");
 	this->bindstatic(&UKismetMathLibrary::RandomInteger, "RandomInteger");
 	this->bindstatic(&FPlatformMath::TruncToInt, "TruncToInt");
 	this->bindconvert(&USceneComponent::GetComponentLocation, "GetComponentLocation");
@@ -119,6 +122,10 @@ int UTclComponent::init() {
 	
 	this->bindflatconvert(&FVector::Equals, "VectorEquals");
 	this->bindstatic(&FVector::Dist, "Dist");
+
+	this->bindstatic(&FCollisionShape::MakeSphere, "MakeSphere");
+
+	this->bindconvert(&UPawnMovementComponent::RequestDirectMove, "RequestDirectMove");
 
 	return TCL_OK;
 
