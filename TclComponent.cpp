@@ -41,6 +41,7 @@ _Tcl_NewDoubleObjProto UTclComponent::_Tcl_NewDoubleObj = nullptr;
 _Tcl_NewStringObjProto UTclComponent::_Tcl_NewStringObj = nullptr;
 _Tcl_NewListObjProto UTclComponent::_Tcl_NewListObj = nullptr;
 _Tcl_SetVar2ExProto UTclComponent::_Tcl_SetVar2Ex = nullptr;
+_Tcl_GetVar2ExProto UTclComponent::_Tcl_GetVar2Ex = nullptr;
 _Tcl_GetBooleanFromObjProto UTclComponent::_Tcl_GetBooleanFromObj = nullptr;
 _Tcl_GetLongFromObjProto UTclComponent::_Tcl_GetLongFromObj = nullptr;
 _Tcl_GetDoubleFromObjProto UTclComponent::_Tcl_GetDoubleFromObj = nullptr;
@@ -81,9 +82,10 @@ int UTclComponent::init() {
 	this->bindstatic(&UTclUnrealEssentials::GetActorLocation, "GetActorLocation");
 	this->bindstatic(&UTclUnrealEssentials::SetActorLocation, "SetActorLocation");
 	this->bindstatic(&UTclUnrealEssentials::AddActorWorldOffset, "AddActorWorldOffset");
+	this->bindstatic(&UTclUnrealEssentials::AddActorWorldRotation, "AddActorWorldRotation");
 	this->bindstatic(&UTclUnrealEssentials::FindComponentsOfByTag, "FindComponentsOfByTag");
 	this->bindstatic(&UTclUnrealEssentials::TypeOf, "TypeOf");
-	this->bindstatic(&UTclUnrealEssentials::PrintString, "PrintString");
+	this->bindstatic(&UTclUnrealEssentials::PrintString, "puts");
 	this->bindstatic(&UTclUnrealEssentials::Eval, "Eval");
 	this->bindstatic(&UTclUnrealEssentials::Purge, "Purge");
 	this->bindstatic(&UTclUnrealEssentials::MAKE<FVector, float, float, float>::CONCRETE, "MakeVector");
@@ -94,6 +96,7 @@ int UTclComponent::init() {
 	this->bindstatic(&UTclUnrealEssentials::SUB<FVector, FVector, FVector>::CONCRETE, "SubstractVectors");
 	this->bindstatic(&UTclUnrealEssentials::MUL<FVector, FVector, float>::CONCRETE, "MultiplyVectorByScalar");
 	this->bindstatic(&UTclUnrealEssentials::DIV<FVector, FVector, float>::CONCRETE, "DivideVectorByScalar");
+	this->bindstatic(&UTclUnrealEssentials::BRACKETS<float, FVector>::CONCRETE, "GetVectorComponentByIndex");
 	this->bindstatic(&UTclUnrealEssentials::GENERAL_CONVERTER<UObject*>::CONCRETE, "Convert");
 
 	this->bindstatic(&UTclUnrealEssentials::GENERAL_ACCESSOR<float>::CONCRETE, "AccessFloat");
@@ -106,15 +109,22 @@ int UTclComponent::init() {
 	this->bindstatic(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
 	this->bindstatic(&UKismetSystemLibrary::DrawDebugSphere, "DrawDebugSphere");
 	this->bindstatic(&UKismetMathLibrary::RandomInteger, "RandomInteger");
+	this->bindstatic(&UKismetMathLibrary::Asin, "Asin");
+	this->bindstatic(&UKismetMathLibrary::Acos, "Acos");
+	this->bindstatic(&UKismetMathLibrary::RadiansToDegrees, "RadiansToDegrees");
+	this->bindstatic(&UKismetMathLibrary::DegreesToRadians, "DegreesToRadians");
+	this->bindstatic(&UKismetMathLibrary::FindLookAtRotation, "FindLookAtRotation");
 	this->bindstatic(&FPlatformMath::TruncToInt, "TruncToInt");
 	this->bindconvert(&USceneComponent::GetComponentLocation, "GetComponentLocation");
 
-	this->bindstatic(&FString::FromInt, "IntToString");
-	this->bindstatic(&FString::SanitizeFloat, "FloatToString");
 	this->bindflatconvert(&FVector::ToString, "VectorToString");
+	this->bindflatconvert(&FRotator::ToString, "RotatorToString");
 
 	this->bindflatconvert(&FVector::GetSafeNormal, "GetSafeNormal");
+	this->bindstatic(&FVector::DotProduct, "DotProduct");
+	this->bindstatic(&FVector::CrossProduct, "CrossProduct");
 	this->bindconvert(&AActor::GetDistanceTo, "GetDistanceTo");
+	this->bindflatconvert(&FVector::Size, "VectorMagnitude");
 
 	this->bindconvert(&AActor::GetActorForwardVector, "GetActorForwardVector");
 	this->bindconvert(&AActor::GetActorRightVector, "GetActorRightVector");
@@ -122,10 +132,19 @@ int UTclComponent::init() {
 	
 	this->bindflatconvert(&FVector::Equals, "VectorEquals");
 	this->bindstatic(&FVector::Dist, "Dist");
+	this->bindflatconvert(&FVector::Rotation, "VectorToRotator");
+	this->bindflatconvert(&FRotator::Equals, "RotatorEquals");
+	this->bindflatconvert(&FVector::IsZero, "VectorIsZero");
 
 	this->bindstatic(&FCollisionShape::MakeSphere, "MakeSphere");
 
 	this->bindconvert(&UPawnMovementComponent::RequestDirectMove, "RequestDirectMove");
+	this->bindconvert(&UPrimitiveComponent::SetPhysicsLinearVelocity, "SetPhysicsLinearVelocity");
+	this->bindconvert(&UPrimitiveComponent::GetPhysicsLinearVelocity, "GetPhysicsLinearVelocity");
+	this->bindconvert(&UPrimitiveComponent::SetPhysicsAngularVelocity, "SetPhysicsAngularVelocity");
+	this->bindconvert(&UPrimitiveComponent::GetPhysicsAngularVelocity, "GetPhysicsAngularVelocity");
+
+	this->bindstatic(&FApp::GetFixedDeltaTime, "GetFixedDeltaTime");
 
 	return TCL_OK;
 
@@ -133,7 +152,7 @@ int UTclComponent::init() {
 
 void UTclComponent::BeginPlay() {
 	Super::BeginPlay();
-	if (handle == nullptr) {
+	if (handleIsMissing()) {
 		auto dllPath = FPaths::Combine(*FPaths::GameDir(), TEXT("ThirdParty/"), TEXT(_TCL_DLL_FNAME_));
 		if (FPaths::FileExists(dllPath)) {
 			handle = FPlatformProcess::GetDllHandle(*dllPath);
@@ -168,6 +187,8 @@ void UTclComponent::BeginPlay() {
 				_Tcl_NewListObj = static_cast<_Tcl_NewListObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_SetVar2Ex";
 				_Tcl_SetVar2Ex = static_cast<_Tcl_SetVar2ExProto>(FPlatformProcess::GetDllExport(handle, *procName));
+				procName = "Tcl_GetVar2Ex";
+				_Tcl_GetVar2Ex = static_cast<_Tcl_GetVar2ExProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_GetBooleanFromObj";
 				_Tcl_GetBooleanFromObj = static_cast<_Tcl_GetBooleanFromObjProto>(FPlatformProcess::GetDllExport(handle, *procName));
 				procName = "Tcl_GetLongFromObj";
@@ -190,6 +211,7 @@ void UTclComponent::BeginPlay() {
 					_Tcl_NewStringObj == nullptr ||
 					_Tcl_NewListObj == nullptr ||
 					_Tcl_SetVar2Ex == nullptr ||
+					_Tcl_GetVar2Ex == nullptr ||
 					_Tcl_GetBooleanFromObj == nullptr ||
 					_Tcl_GetLongFromObj == nullptr ||
 					_Tcl_GetDoubleFromObj == nullptr ||
@@ -236,8 +258,7 @@ _Tcl_GetDoubleFromObjProto UTclComponent::get_Tcl_GetDoubleFromObj() { return _T
 _Tcl_GetStringFromObjProto UTclComponent::get_Tcl_GetStringFromObj() { return _Tcl_GetStringFromObj; }
 
 int UTclComponent::eval(const char* code) {
-	if(handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
-	else { return _Tcl_Eval(interpreter, code); }
+	if(handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else { return _Tcl_Eval(interpreter, code); }
 
 }
 
@@ -254,5 +275,21 @@ int32 UTclComponent::Eval(FString Filename, FString Code) {
 	auto status = eval(TCHAR_TO_ANSI(*Code));
 	if (status == TCL_ERROR) { UE_LOG(LogClass, Error, TEXT("Tcl script error for! filepath: '%s' with code: '%s'!"), *fname, *Code) }
 	return status;
+
+}
+
+int32 UTclComponent::GetFloat(FString Location, FString Key, float& Result) {
+	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
+		if (Location.IsEmpty()) {
+			UE_LOG(LogClass, Warning, TEXT("Tcl: Location parameter cannot be empty for the GetFloat function!"))
+			return TCL_ERROR;
+		} else {
+			double in = 0.f;
+			auto obj = _Tcl_GetVar2Ex(interpreter, TCHAR_TO_ANSI(*Location), Key.IsEmpty() ? nullptr : TCHAR_TO_ANSI(*Key), TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG);
+			auto result = _Tcl_GetDoubleFromObj(interpreter, obj, &in);
+			Result = in;
+			return result;
+		}
+	}
 
 }

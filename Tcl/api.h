@@ -39,6 +39,7 @@ typedef Tcl_Obj*(*_Tcl_NewDoubleObjProto)(double);
 typedef Tcl_Obj*(*_Tcl_NewStringObjProto)(const char*, int);
 typedef Tcl_Obj*(*_Tcl_NewListObjProto)(int, ClientData);  // a hack to bypass const checks, ClientData is actually Tcl_Obj* const[]
 typedef Tcl_Obj*(*_Tcl_SetVar2ExProto)(Tcl_Interp*, char*, char*, Tcl_Obj*, int);
+typedef Tcl_Obj*(*_Tcl_GetVar2ExProto)(Tcl_Interp*, char*, char*, int);
 typedef int(*_Tcl_GetBooleanFromObjProto)(Tcl_Interp*, Tcl_Obj*, int*);
 typedef int(*_Tcl_GetLongFromObjProto)(Tcl_Interp*, Tcl_Obj*, long*);
 typedef int(*_Tcl_GetDoubleFromObjProto)(Tcl_Interp*, Tcl_Obj*, double*);

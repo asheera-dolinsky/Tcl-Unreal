@@ -67,6 +67,13 @@ Tcl_Obj* UTclUnrealEssentials::AddActorWorldOffset(AActor* Actor, FVector Delta,
 	return UTclComponent::pack(Hit, Result.ImpactPoint);
 
 }
+Tcl_Obj* UTclUnrealEssentials::AddActorWorldRotation(AActor* Actor, FRotator Delta, bool Sweep, int32 TeleportAsInt32) {
+	FHitResult Result;
+	auto Hit = false;
+	if (Actor != nullptr) { Actor->AddActorWorldRotation(Delta, Sweep, &Result, TEnumAsByte<ETeleportType>(TeleportAsInt32)); }
+	return UTclComponent::pack(Hit, Result.ImpactPoint);
+
+}
 Tcl_Obj* UTclUnrealEssentials::FindComponentsOfByTag(AActor* Actor, TSubclassOf<UActorComponent> Cls, FName Tag) {
 	auto Components = Actor == nullptr? TArray<UActorComponent*>() : Actor->GetComponentsByTag(Cls, Tag);
 	return UTclComponent::convert(Components);
@@ -102,6 +109,7 @@ FString UTclUnrealEssentials::TypeOf(Tcl_Obj* obj) {
 Tcl_Obj* UTclUnrealEssentials::SweepSingleByChannel(UWorld* World, FVector Start, FVector End, FQuat Rot, FCollisionShape Shape, int32 TraceChannelAsInt32) {
 	FHitResult OutHit;
 	auto Hit = World != nullptr && World->SweepSingleByChannel(OutHit, Start, End, Rot, TEnumAsByte<ECollisionChannel>(TraceChannelAsInt32), Shape, FCollisionQueryParams::DefaultQueryParam, FCollisionResponseParams::DefaultResponseParam);
-	return UTclComponent::pack(Hit, OutHit.ImpactPoint);
+	FVector ImpactPoint = OutHit.ImpactPoint;
+	return UTclComponent::pack(Hit, ImpactPoint);
 
 }

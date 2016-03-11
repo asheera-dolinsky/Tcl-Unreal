@@ -92,6 +92,7 @@ protected:
 	static _Tcl_NewStringObjProto _Tcl_NewStringObj;
 	static _Tcl_NewListObjProto _Tcl_NewListObj;
 	static _Tcl_SetVar2ExProto _Tcl_SetVar2Ex;
+	static _Tcl_GetVar2ExProto _Tcl_GetVar2Ex;
 	static _Tcl_GetBooleanFromObjProto _Tcl_GetBooleanFromObj;
 	static _Tcl_GetLongFromObjProto _Tcl_GetLongFromObj;
 	static _Tcl_GetDoubleFromObjProto _Tcl_GetDoubleFromObj;
@@ -464,6 +465,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 Eval(FString Filename, FString Code);
+
+	UFUNCTION(BlueprintCallable, Category = Tcl)
+	int32 GetFloat(FString Location, FString Key, float& Result);
 	
 };
 

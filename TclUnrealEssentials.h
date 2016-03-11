@@ -101,6 +101,7 @@ public:
 	static FVector GetActorLocation(AActor*);
 	static Tcl_Obj* SetActorLocation(AActor*, FVector, bool, int32);
 	static Tcl_Obj* AddActorWorldOffset(AActor*, FVector, bool, int32);
+	static Tcl_Obj* AddActorWorldRotation(AActor*, FRotator, bool, int32);
 	static Tcl_Obj* FindComponentsOfByTag(AActor*, TSubclassOf<UActorComponent>, FName);
 	static Tcl_Obj* Purge(AActor*);
 	static int32 Eval(AActor*, FString, FString);
@@ -124,6 +125,9 @@ public:
 	};
 	template<typename T> struct EQ {
 		FORCEINLINE static bool CONCRETE(T First, T Second) { return First == Second; }
+	};
+	template<typename Ret, typename Left> struct BRACKETS {
+		FORCEINLINE static Ret CONCRETE(Left First, int32 Right) { return First[Right]; }
 	};
 
 #pragma warning(disable:4701) 
