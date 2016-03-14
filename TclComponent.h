@@ -113,7 +113,7 @@ protected:
 		collector->Add(NEW_OBJ<First>::MAKE(head));
 		collect<Rest...>(collector, tail...);
 	}
-#pragma warning(disable:4701)
+#pragma warning(disable:4701; disable:4703)
 	template<typename F, typename ReturnType> struct BIND_CONVERT {
 		template<typename Cls, typename ...ParamTypes> FORCEINLINE static int IMPL(Tcl_Interp* interpreter, F f, FString name) {
 			if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
@@ -174,7 +174,7 @@ protected:
 			}
 		}
 	};
-#pragma warning(default:4701)
+#pragma warning(default:4701; default:4703)
 public:	
 	UTclComponent();
 	virtual void BeginPlay() override;
@@ -298,7 +298,7 @@ public:
 		typedef ReturnType(Cls::*F)(ParamTypes...) const;
 		return BIND_FLAT_CONVERT<F, ReturnType>::IMPL<Cls, ParamTypes...>(interpreter, static_cast<F>(f), name);
 	}
-#pragma warning(disable:4701)
+#pragma warning(disable:4701; disable:4703)
 	template<typename Cls, typename ReturnType> int bindaccessor(ReturnType Cls::*ptr, FString name) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
 		else {
@@ -359,7 +359,7 @@ public:
 			return TCL_OK;
 		}
 	}
-#pragma warning(default:4701)
+#pragma warning(default:4701; default:4703)
 	template<typename T> int define(FString Location, T val, FString Key = "", int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto obj = UTclComponent::NEW_OBJ<T>::MAKE(val);

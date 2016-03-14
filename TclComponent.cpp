@@ -74,18 +74,18 @@ int UTclComponent::init() {
 	val->typePtr = &type;
 	*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
 	
+	this->bindstatic(&UTclUnrealEssentials::PrintString, "puts");
+
 	this->bindstatic(&UTclUnrealEssentials::FindClass, "FindClass");
 	this->bindstatic(&UTclUnrealEssentials::AllActorsOf, "AllActorsOf");
-	this->bindstatic(&UTclUnrealEssentials::FindComponentOf, "FindComponentOf");
+
+	this->bindconvert(static_cast<UActorComponent*(AActor::*)(const TSubclassOf<UActorComponent>) const>(&AActor::FindComponentByClass), "FindComponentByClass");
+
 	this->bindstatic(&UTclUnrealEssentials::LineTraceSingleByChannel, "LineTraceSingleByChannel");
 	this->bindstatic(&UTclUnrealEssentials::SweepSingleByChannel, "SweepSingleByChannel");
-	this->bindstatic(&UTclUnrealEssentials::GetActorLocation, "GetActorLocation");
-	this->bindstatic(&UTclUnrealEssentials::SetActorLocation, "SetActorLocation");
-	this->bindstatic(&UTclUnrealEssentials::AddActorWorldOffset, "AddActorWorldOffset");
-	this->bindstatic(&UTclUnrealEssentials::AddActorWorldRotation, "AddActorWorldRotation");
+	this->bindconvert(&AActor::GetActorLocation, "GetActorLocation");
 	this->bindstatic(&UTclUnrealEssentials::FindComponentsOfByTag, "FindComponentsOfByTag");
 	this->bindstatic(&UTclUnrealEssentials::TypeOf, "TypeOf");
-	this->bindstatic(&UTclUnrealEssentials::PrintString, "puts");
 	this->bindstatic(&UTclUnrealEssentials::Eval, "Eval");
 	this->bindstatic(&UTclUnrealEssentials::Purge, "Purge");
 	this->bindstatic(&UTclUnrealEssentials::MAKE<FVector, float, float, float>::CONCRETE, "MakeVector");
@@ -97,6 +97,10 @@ int UTclComponent::init() {
 	this->bindstatic(&UTclUnrealEssentials::MUL<FVector, FVector, float>::CONCRETE, "MultiplyVectorByScalar");
 	this->bindstatic(&UTclUnrealEssentials::DIV<FVector, FVector, float>::CONCRETE, "DivideVectorByScalar");
 	this->bindstatic(&UTclUnrealEssentials::BRACKETS<float, FVector>::CONCRETE, "GetVectorComponentByIndex");
+	
+	this->bindstatic(&UTclUnrealEssentials::STAR<UClass*, TSubclassOf<UObject>>::CONCRETE, "RestrictorToClass");
+	
+	this->bindconvert(static_cast<bool(UObject::*)(const UClass*) const>(&UObjectBaseUtility::IsA), "IsA");
 	this->bindstatic(&UTclUnrealEssentials::GENERAL_CONVERTER<UObject*>::CONCRETE, "Convert");
 
 	this->bindstatic(&UTclUnrealEssentials::GENERAL_ACCESSOR<float>::CONCRETE, "AccessFloat");
@@ -109,11 +113,15 @@ int UTclComponent::init() {
 	this->bindstatic(&UKismetSystemLibrary::DrawDebugLine, "DrawDebugLine");
 	this->bindstatic(&UKismetSystemLibrary::DrawDebugSphere, "DrawDebugSphere");
 	this->bindstatic(&UKismetMathLibrary::RandomInteger, "RandomInteger");
+	this->bindstatic(&FMath::FRandRange, "RandomRange");
+	this->bindstatic(&UKismetMathLibrary::Sin, "Sin");
 	this->bindstatic(&UKismetMathLibrary::Asin, "Asin");
+	this->bindstatic(&UKismetMathLibrary::Cos, "Cos");
 	this->bindstatic(&UKismetMathLibrary::Acos, "Acos");
 	this->bindstatic(&UKismetMathLibrary::RadiansToDegrees, "RadiansToDegrees");
 	this->bindstatic(&UKismetMathLibrary::DegreesToRadians, "DegreesToRadians");
 	this->bindstatic(&UKismetMathLibrary::FindLookAtRotation, "FindLookAtRotation");
+	this->bindstatic(&UKismetMathLibrary::FTrunc, "Trunc");
 	this->bindstatic(&FPlatformMath::TruncToInt, "TruncToInt");
 	this->bindconvert(&USceneComponent::GetComponentLocation, "GetComponentLocation");
 
@@ -143,8 +151,10 @@ int UTclComponent::init() {
 	this->bindconvert(&UPrimitiveComponent::GetPhysicsLinearVelocity, "GetPhysicsLinearVelocity");
 	this->bindconvert(&UPrimitiveComponent::SetPhysicsAngularVelocity, "SetPhysicsAngularVelocity");
 	this->bindconvert(&UPrimitiveComponent::GetPhysicsAngularVelocity, "GetPhysicsAngularVelocity");
+	this->bindconvert(&UPrimitiveComponent::AddTorque, "AddTorque");
 
 	this->bindstatic(&FApp::GetFixedDeltaTime, "GetFixedDeltaTime");
+	this->bindstatic(&FApp::GetDeltaTime, "GetDeltaTime");
 
 	return TCL_OK;
 

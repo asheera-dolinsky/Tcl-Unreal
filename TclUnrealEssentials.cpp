@@ -42,36 +42,12 @@ TArray<AActor*> UTclUnrealEssentials::AllActorsOf(UWorld* World, TSubclassOf<AAc
 	return actors;
 
 }
-UActorComponent* UTclUnrealEssentials::FindComponentOf(AActor* Actor, TSubclassOf<UActorComponent> Cls) {
-	return Actor == nullptr? nullptr : Actor->FindComponentByClass(Cls);
-
-}
 Tcl_Obj* UTclUnrealEssentials::LineTraceSingleByChannel(UWorld* World, FVector Start, FVector End, int32 TraceChannelAsInt32) {
 	FHitResult Result;
 	auto Hit = World != nullptr && World->LineTraceSingleByChannel(Result, Start, End, TEnumAsByte<ECollisionChannel>(TraceChannelAsInt32));
-	return UTclComponent::pack(Hit, Result.ImpactPoint);
-
-}
-FVector UTclUnrealEssentials::GetActorLocation(AActor* Actor) { return Actor == nullptr? FVector(0.f, 0.f, 0.f) : Actor->GetActorLocation(); }
-Tcl_Obj* UTclUnrealEssentials::SetActorLocation(AActor* Actor, FVector Delta, bool Sweep, int32 TeleportAsInt32) {
-	FHitResult Result;
-	auto Hit = false;
-	if (Actor != nullptr) { Actor->SetActorLocation(Delta, Sweep, &Result, TEnumAsByte<ETeleportType>(TeleportAsInt32)); }
-	return UTclComponent::pack(Hit, Result.ImpactPoint);
-
-}
-Tcl_Obj* UTclUnrealEssentials::AddActorWorldOffset(AActor* Actor, FVector Delta, bool Sweep, int32 TeleportAsInt32) {
-	FHitResult Result;
-	auto Hit = false;
-	if(Actor != nullptr) { Actor->AddActorWorldOffset(Delta, Sweep, &Result, TEnumAsByte<ETeleportType>(TeleportAsInt32)); }
-	return UTclComponent::pack(Hit, Result.ImpactPoint);
-
-}
-Tcl_Obj* UTclUnrealEssentials::AddActorWorldRotation(AActor* Actor, FRotator Delta, bool Sweep, int32 TeleportAsInt32) {
-	FHitResult Result;
-	auto Hit = false;
-	if (Actor != nullptr) { Actor->AddActorWorldRotation(Delta, Sweep, &Result, TEnumAsByte<ETeleportType>(TeleportAsInt32)); }
-	return UTclComponent::pack(Hit, Result.ImpactPoint);
+	FVector ImpactPoint = Result.ImpactPoint;
+	AActor* Actor = Result.Actor.Get(false);
+	return UTclComponent::pack(Hit, ImpactPoint, Actor);
 
 }
 Tcl_Obj* UTclUnrealEssentials::FindComponentsOfByTag(AActor* Actor, TSubclassOf<UActorComponent> Cls, FName Tag) {

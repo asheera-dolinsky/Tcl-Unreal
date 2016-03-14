@@ -95,13 +95,8 @@ private:
 public:
 	static TSubclassOf<UObject> FindClass(FString);
 	static TArray<AActor*> AllActorsOf(UWorld*, TSubclassOf<AActor>);
-	static UActorComponent* FindComponentOf(AActor*, TSubclassOf<UActorComponent>);
 	static Tcl_Obj* LineTraceSingleByChannel(UWorld*, FVector, FVector, int32);
 	static Tcl_Obj* SweepSingleByChannel(UWorld*, FVector, FVector, FQuat, FCollisionShape, int32);
-	static FVector GetActorLocation(AActor*);
-	static Tcl_Obj* SetActorLocation(AActor*, FVector, bool, int32);
-	static Tcl_Obj* AddActorWorldOffset(AActor*, FVector, bool, int32);
-	static Tcl_Obj* AddActorWorldRotation(AActor*, FRotator, bool, int32);
 	static Tcl_Obj* FindComponentsOfByTag(AActor*, TSubclassOf<UActorComponent>, FName);
 	static Tcl_Obj* Purge(AActor*);
 	static int32 Eval(AActor*, FString, FString);
@@ -129,7 +124,9 @@ public:
 	template<typename Ret, typename Left> struct BRACKETS {
 		FORCEINLINE static Ret CONCRETE(Left First, int32 Right) { return First[Right]; }
 	};
-
+	template<typename Ret, typename Left> struct STAR {
+		FORCEINLINE static Ret CONCRETE(Left First) { return *First; }
+	};
 #pragma warning(disable:4701) 
 	template<typename ReturnType> struct GENERAL_ACCESSOR {
 		FORCEINLINE static ReturnType CONCRETE(UObject* self, FString name) {

@@ -32,8 +32,5 @@ UCLASS() class UTclUnrealOptionals : public UBlueprintFunctionLibrary {
   GENERATED_UCLASS_BODY()
 public:
 	static Tcl_Obj* GetCursorHit(APlayerController*, TArray<TEnumAsByte<EObjectTypeQuery>>, bool);
-	static FVector RotationToVector(FRotator);
-	static void SetActorLocation(AActor*, FVector);
-	static void SetCollisionProfileByName(UPrimitiveComponent*, FName);
 
 };
