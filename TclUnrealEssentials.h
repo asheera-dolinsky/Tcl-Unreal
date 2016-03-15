@@ -99,7 +99,7 @@ public:
 	static Tcl_Obj* SweepSingleByChannel(UWorld*, FVector, FVector, FQuat, FCollisionShape, int32);
 	static Tcl_Obj* FindComponentsOfByTag(AActor*, TSubclassOf<UActorComponent>, FName);
 	static Tcl_Obj* Purge(AActor*);
-	static int32 Eval(AActor*, FString, FString);
+	static int32 Eval(AActor*, FString, FString, Tcl_Obj*);
 	static void PrintString(FString, int32);
 	static FString TypeOf(Tcl_Obj* obj);
 

@@ -63,10 +63,13 @@ Tcl_Obj* UTclUnrealEssentials::Purge(AActor* Actor) {
 	return obj;
 
 }
-int32 UTclUnrealEssentials::Eval(AActor* Actor, FString Filename, FString Code) {
+int32 UTclUnrealEssentials::Eval(AActor* Actor, FString Filename, FString Code, Tcl_Obj* Obj) {
 	UTclComponent* comp = nullptr;
 	if(Actor != nullptr) { comp = Actor->FindComponentByClass<UTclComponent>(); } else { return TCL_ERROR; }
-	return (comp == nullptr)? TCL_ERROR : comp->Eval(Filename, Code);
+	if (comp == nullptr) { return TCL_ERROR; } else {
+		comp->Fill(Obj);
+		return comp->Eval(Filename, Code);
+	}
 
 }
 void UTclUnrealEssentials::PrintString(FString name, int32 type) {

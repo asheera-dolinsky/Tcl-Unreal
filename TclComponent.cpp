@@ -73,8 +73,10 @@ int UTclComponent::init() {
 	auto val = _Tcl_NewObj();
 	val->typePtr = &type;
 	*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
-	
+
+	this->define("Interpreter", this);
 	this->bindstatic(&UTclUnrealEssentials::PrintString, "puts");
+	this->bindconvertsafe<UObject, bool, bool>(&UObject::IsValidLowLevelFast, "IsValid");
 
 	this->bindstatic(&UTclUnrealEssentials::FindClass, "FindClass");
 	this->bindstatic(&UTclUnrealEssentials::AllActorsOf, "AllActorsOf");
@@ -101,6 +103,7 @@ int UTclComponent::init() {
 	this->bindstatic(&UTclUnrealEssentials::STAR<UClass*, TSubclassOf<UObject>>::CONCRETE, "RestrictorToClass");
 	
 	this->bindconvert(static_cast<bool(UObject::*)(const UClass*) const>(&UObjectBaseUtility::IsA), "IsA");
+	this->bindconvert(static_cast<FString(UObject::*)() const>(&UObjectBaseUtility::GetName), "GetName");
 	this->bindstatic(&UTclUnrealEssentials::GENERAL_CONVERTER<UObject*>::CONCRETE, "Convert");
 
 	this->bindstatic(&UTclUnrealEssentials::GENERAL_ACCESSOR<float>::CONCRETE, "AccessFloat");
