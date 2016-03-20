@@ -306,3 +306,19 @@ int32 UTclComponent::GetFloat(FString Location, FString Key, float& Result) {
 	}
 
 }
+
+UObject* UTclComponent::GetObj(FString Location, FString Key) {
+	static const FString genericType = "UObject";
+	UObject* Result = nullptr;
+	if (!(handle == nullptr || interpreter == nullptr)) {
+		if (Location.IsEmpty()) { UE_LOG(LogClass, Warning, TEXT("Tcl: Location parameter cannot be empty for the GetObj function!")) } else {
+			auto obj = _Tcl_GetVar2Ex(interpreter, TCHAR_TO_ANSI(*Location), Key.IsEmpty() ? nullptr : TCHAR_TO_ANSI(*Key), TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG);
+			if (obj == nullptr || obj->typePtr == nullptr) { UE_LOG(LogClass, Error, TEXT("Tcl error! Failed to get an object.")) } else {
+				FString name = obj->typePtr->name;
+				if (name == genericType) { Result = static_cast<UObject*>(obj->internalRep.otherValuePtr); }
+			}
+		}
+	}
+	return Result;
+
+}

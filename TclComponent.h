@@ -500,6 +500,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 GetFloat(FString Location, FString Key, float& Result);
+
+	UFUNCTION(BlueprintCallable, Category = Tcl)
+	UObject* GetObj(FString Location, FString Key);
 	
 };
 
