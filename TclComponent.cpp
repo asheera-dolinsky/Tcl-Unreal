@@ -66,7 +66,6 @@ Tcl_Obj* UTclComponent::Purge() {
 	return obj;
 
 }
-
 int UTclComponent::init() {
 	static const Tcl_ObjType type = { "NIL", &Tcl_FreeInternalRepProc, &Tcl_DupInternalRepProc, &Tcl_UpdateStringProc, &Tcl_SetFromAnyProc };
 	interpreter = _Tcl_CreateInterp();
