@@ -129,7 +129,7 @@ public:
 	template<typename Ret, typename Left> struct STAR {
 		FORCEINLINE static Ret CONCRETE(Left First) { return *First; }
 	};
-#pragma warning(disable:4701) 
+#pragma warning(disable:4701)
 	template<typename ReturnType> struct GENERAL_ACCESSOR {
 		FORCEINLINE static ReturnType CONCRETE(UObject* self, FString name) {
 			auto success = false;
@@ -154,7 +154,7 @@ public:
 			return result;
 		}
 	};
-#pragma warning(default:4701) 
+#pragma warning(default:4701)
 	template<typename T> struct GENERAL_MUTATOR {
 		FORCEINLINE static void CONCRETE(UObject* self, FString name, T val) {
 			auto success = false;
@@ -181,6 +181,7 @@ public:
 				if (self != nullptr) {
 					self->Fill(UTclComponent::pack(params...));
 					self->Eval(Filename, Code);
+					self->Purge();
 				}
 			});
 			return del;
