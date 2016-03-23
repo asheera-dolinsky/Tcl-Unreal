@@ -96,6 +96,7 @@ int UTclComponent::init() {
 	this->bindstatic(&UTclUnrealEssentials::ADD<FVector, FVector, FVector>::CONCRETE, "AddVectors");
 	this->bindstatic(&UTclUnrealEssentials::SUB<FVector, FVector, FVector>::CONCRETE, "SubstractVectors");
 	this->bindstatic(&UTclUnrealEssentials::MUL<FVector, FVector, float>::CONCRETE, "MultiplyVectorByScalar");
+	this->bindstatic(&UTclUnrealEssentials::MUL<FVector, FVector, FVector>::CONCRETE, "MultiplyVectorByVector");
 	this->bindstatic(&UTclUnrealEssentials::DIV<FVector, FVector, float>::CONCRETE, "DivideVectorByScalar");
 	this->bindstatic(&UTclUnrealEssentials::BRACKETS<float, FVector>::CONCRETE, "GetVectorComponentByIndex");
 	
@@ -139,6 +140,10 @@ int UTclComponent::init() {
 	this->bindconvert(&AActor::GetActorForwardVector, "GetActorForwardVector");
 	this->bindconvert(&AActor::GetActorRightVector, "GetActorRightVector");
 	this->bindconvert(&AActor::GetActorUpVector, "GetActorUpVector");
+
+	this->bindconvert(&USceneComponent::GetForwardVector, "GetForwardVector");
+	this->bindconvert(&USceneComponent::GetRightVector, "GetRightVector");
+	this->bindconvert(&USceneComponent::GetUpVector, "GetUpVector");
 	
 	this->bindflatconvert(&FVector::Equals, "VectorEquals");
 	this->bindstatic(&FVector::Dist, "Dist");

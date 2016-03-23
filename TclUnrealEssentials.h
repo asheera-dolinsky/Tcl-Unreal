@@ -174,20 +174,6 @@ public:
 		FORCEINLINE static Tcl_Obj* CONCRETE(TArray<P> arr) { return UTclComponent::convert(arr); }
 	};
 
-	template<typename RetDel, typename ...ParamTypes> struct MAKEDELEGATE {
-		FORCEINLINE static RetDel CONCRETE(UTclComponent* self, FString Filename, FString Code) {
-			RetDel del;
-			del.BindLambda([=](ParamTypes... params) -> void {
-				if (self != nullptr) {
-					self->Fill(UTclComponent::pack(params...));
-					self->Eval(Filename, Code);
-					self->Purge();
-				}
-			});
-			return del;
-		}
-	};
-
 	template<typename EnumType> struct ENUMCONVERTER {
 		FORCEINLINE static EnumType CONCRETE(int32 val) { return TEnumAsByte<EnumType>(val).GetValue(); }
 	};

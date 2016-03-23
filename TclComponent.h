@@ -188,6 +188,15 @@ protected:
 			}
 		}
 	};
+	template<typename RetDel, typename ...ParamTypes> RetDel MAKE_DELEGATE(FString Filename, FString Code) {
+		RetDel del;
+		del.BindLambda([=](ParamTypes... params) -> void {
+			this->Fill(UTclComponent::pack(params...));
+			this->Eval(Filename, Code);
+			this->Purge();
+		});
+		return del;
+	}
 public:	
 	UTclComponent();
 	virtual void BeginPlay() override;
@@ -494,6 +503,10 @@ public:
 			return _Tcl_NewStringObj(TCHAR_TO_ANSI(*val.ToString()), -1);
 		}
 	};
+
+	template<typename RetDel, typename ...ParamTypes> int registerdelegate(FString name) {
+		return this->bindmethod<UTclComponent, RetDel, FString, FString>(this, static_cast<RetDel(UTclComponent::*)(FString, FString)>(&UTclComponent::MAKE_DELEGATE<RetDel, ParamTypes...>), name);
+	}
 
 	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 Eval(FString Filename, FString Code);
