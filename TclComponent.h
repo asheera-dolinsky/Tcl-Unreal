@@ -37,6 +37,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "TclUnrealEssentials.h"
+#include "DynamicDelegateHelper.h"
 #include "TclComponent.generated.h"
 
 
@@ -506,6 +507,10 @@ public:
 
 	template<typename RetDel, typename ...ParamTypes> int registerdelegate(FString name) {
 		return this->bindmethod<UTclComponent, RetDel, FString, FString>(this, static_cast<RetDel(UTclComponent::*)(FString, FString)>(&UTclComponent::MAKE_DELEGATE<RetDel, ParamTypes...>), name);
+	}
+	template<typename RetDel, typename ...ParamTypes> int registerdynamicdelegateadder(FString name) {
+		auto f = &UDynamicDelegateHelper::Create<RetDel, ParamTypes...>;
+		return this->bindstatic(static_cast<decltype(f)>(f), name);
 	}
 
 	UFUNCTION(BlueprintCallable, Category = Tcl)
