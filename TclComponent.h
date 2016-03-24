@@ -189,7 +189,7 @@ protected:
 			}
 		}
 	};
-	template<typename RetDel, typename ...ParamTypes> RetDel MAKE_DELEGATE(FString Filename, FString Code) {
+	template<typename RetDel, typename ...ParamTypes> FORCEINLINE RetDel GenerateDelegate(FString Filename, FString Code) {
 		RetDel del;
 		del.BindLambda([=](ParamTypes... params) -> void {
 			this->Fill(UTclComponent::pack(params...));
@@ -505,9 +505,8 @@ public:
 		}
 	};
 
-	template<typename RetDel, typename ...ParamTypes> int registerdelegate(FString name) {
-		return this->bindmethod<UTclComponent, RetDel, FString, FString>(this, static_cast<RetDel(UTclComponent::*)(FString, FString)>(&UTclComponent::MAKE_DELEGATE<RetDel, ParamTypes...>), name);
-	}
+	template<typename RetDel, typename ...ParamTypes> int32 registerdelegate(FString name) { return this->bindmethod(this, &UTclComponent::GenerateDelegate<RetDel, ParamTypes...>, name); }
+
 	template<typename RetDel, typename ...ParamTypes> int registerdynamicdelegateadder(FString name) {
 		auto f = &UDynamicDelegateHelper::Create<RetDel, ParamTypes...>;
 		return this->bindstatic(static_cast<decltype(f)>(f), name);

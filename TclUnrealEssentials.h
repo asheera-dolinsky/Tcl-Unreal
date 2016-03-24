@@ -174,8 +174,4 @@ public:
 		FORCEINLINE static Tcl_Obj* CONCRETE(TArray<P> arr) { return UTclComponent::convert(arr); }
 	};
 
-	template<typename EnumType> struct ENUMCONVERTER {
-		FORCEINLINE static EnumType CONCRETE(int32 val) { return TEnumAsByte<EnumType>(val).GetValue(); }
-	};
-
 };
