@@ -295,6 +295,9 @@ int32 UTclComponent::Eval(FString Filename, FString Code) {
 
 }
 
+int32 UTclComponent::SetObj(UObject* Object, FString Location, FString Key) { return this->define(Location, Object, Key); }
+int32 UTclComponent::SetClass(TSubclassOf<UObject> Class, FString Location, FString Key) { return this->define(Location, Class, Key); }
+
 int32 UTclComponent::GetFloat(FString Location, FString Key, float& Result) {
 	if (handle == nullptr || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 		if (Location.IsEmpty()) {
@@ -310,7 +313,6 @@ int32 UTclComponent::GetFloat(FString Location, FString Key, float& Result) {
 	}
 
 }
-
 UObject* UTclComponent::GetObj(FString Location, FString Key) {
 	static const FString genericType = "UObject";
 	UObject* Result = nullptr;

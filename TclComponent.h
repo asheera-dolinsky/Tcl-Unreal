@@ -402,6 +402,39 @@ public:
 			return TCL_OK;
 		}
 	}
+	template<typename Cls, typename ReturnType> int bindpointeraccessor(ReturnType Cls::*ptr, FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		else {
+			const char* fname = TCHAR_TO_ANSI(*name);
+			auto del = new TBaseDelegate<ReturnType*, Cls*>;
+			auto lam = [ptr](Cls* self) -> ReturnType* {
+				ReturnType* result = nullptr;
+				if (self != nullptr) { result = &(self->*ptr); }
+				return result;
+			};
+			del->BindLambda(lam);
+			auto data = new WrapperContainer<TBaseDelegate<ReturnType*, Cls*>>({ interpreter, name, del });
+			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<ReturnType*, Cls*>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<ReturnType*, Cls*>>);
+			return TCL_OK;
+		}
+	}
+	template<typename Cls, typename ReturnType> int bindflatpointeraccessor(ReturnType Cls::*ptr, FString name) {
+		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; }
+		else {
+			const char* fname = TCHAR_TO_ANSI(*name);
+			auto del = new TBaseDelegate<ReturnType*, Cls*>;
+			auto lam = [ptr](Cls* self) -> ReturnType* {
+				ReturnType* result = nullptr;
+				if (self != nullptr) { result = &(self.*ptr); }
+				return result;
+			};
+			del->BindLambda(lam);
+			auto data = new WrapperContainer<TBaseDelegate<ReturnType*, Cls*>>({ interpreter, name, del });
+			_Tcl_CreateObjCommand(interpreter, fname, &TCL_WRAPPER<ReturnType*, Cls*>::RUN, static_cast<ClientData>(data), &UTclComponent::freeWrapperContainer<TBaseDelegate<ReturnType*, Cls*>>);
+			return TCL_OK;
+		}
+	}
+
 	template<typename T> int define(FString Location, T val, FString Key = "", int flags = TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) {
 		if (handleIsMissing() || interpreter == nullptr) { return _TCL_BOOTSTRAP_FAIL_; } else {
 			auto obj = UTclComponent::NEW_OBJ<T>::MAKE(val);
@@ -512,8 +545,24 @@ public:
 		return this->bindstatic(static_cast<decltype(f)>(f), name);
 	}
 
+	template<typename Cls, typename ...ParamTypes> Cls* CreateDynamicDelegateHelper(FString Filename, FString Code) {
+		auto self = NewObject<Cls>(this, Cls::StaticClass());
+		self->initialize(this, Filename, Code);
+		return self;
+
+	}
+	template<typename Cls, typename Del> static void AddDynamicDelegateHelper(Cls* Helper, Del* Delegate) {
+		if (Delegate != nullptr) { Delegate->AddDynamic(Helper, &Cls::Call); }
+	}
+
 	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 Eval(FString Filename, FString Code);
+
+	UFUNCTION(BlueprintCallable, Category = Tcl)
+	int32 SetObj(UObject* Object, FString Location, FString Key);
+
+	UFUNCTION(BlueprintCallable, Category = Tcl)
+	int32 SetClass(TSubclassOf<UObject> Class, FString Location, FString Key);
 
 	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 GetFloat(FString Location, FString Key, float& Result);

@@ -28,28 +28,20 @@
 #include "DynamicDelegateHelper.generated.h"
 
 
-UCLASS()
-class PHANTOMGUNSDEMO_API UDynamicDelegateHelper : public UObject
+UCLASS() class PHANTOMGUNSDEMO_API UDynamicDelegateHelper : public UObject
 {
 	GENERATED_BODY()
 protected:
 	UTclComponent* Interpreter = nullptr;
 	FString Filename = "";
 	FString Code = "";
-public:
-	void initialize(UTclComponent*, FString, FString);
-	template<typename ...ParamTypes> void MAKE_DELEGATE(ParamTypes... params) {
+	template<typename ...ParamTypes> void Call(ParamTypes... params) {
 		Interpreter->Fill(UTclComponent::pack(params...));
 		Interpreter->Eval(Filename, Code);
 		Interpreter->Purge();
 
 	}
-	template<typename RetDel, typename ...ParamTypes> static void Create(RetDel* del, UTclComponent* Interpreter, FString Filename, FString Code) {
-		if(del != nullptr) {
-			auto self = NewObject<UDynamicDelegateHelper>();
-			self->initialize(Interpreter, Filename, Code);
-			del->AddDynamic(self, &UDynamicDelegateHelper::MAKE_DELEGATE<ParamTypes...>);
-		}
-	}
+public:
+	void initialize(UTclComponent*, FString, FString);
 
 };
