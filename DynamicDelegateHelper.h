@@ -35,7 +35,7 @@ protected:
 	UTclComponent* Interpreter = nullptr;
 	FString Filename = "";
 	FString Code = "";
-	template<typename ...ParamTypes> void Call(ParamTypes... params) {
+	template<typename ...ParamTypes> void __Call(ParamTypes... params) {
 		Interpreter->Fill(UTclComponent::pack(params...));
 		Interpreter->Eval(Filename, Code);
 		Interpreter->Purge();
