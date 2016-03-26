@@ -163,6 +163,14 @@ int UTclComponent::init() {
 	this->bindstatic(&FApp::GetFixedDeltaTime, "GetFixedDeltaTime");
 	this->bindstatic(&FApp::GetDeltaTime, "GetDeltaTime");
 
+	OnBeginPlay.ExecuteIfBound(this);
+
+	for(auto path : IncludeScriptPaths) {
+		if (!path.IsEmpty()) { Eval(path, ""); }
+	}
+	OnBeginPlayDynamic.Broadcast();
+	if (!MainScriptPath.IsEmpty()) { Eval(MainScriptPath, ""); }
+
 	return TCL_OK;
 
 }

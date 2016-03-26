@@ -72,6 +72,8 @@ template<typename ReturnType, typename ...ParamTypes> struct TCL_WRAPPER;
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent)) class PHANTOMGUNSDEMO_API UTclComponent : public UActorComponent {
 	GENERATED_UCLASS_BODY()
 protected:
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FInitializeSignature);
+
 	static void* handle;
 	static _Tcl_CreateInterpProto _Tcl_CreateInterp;
 	static _Tcl_DeleteInterpProto _Tcl_DeleteInterp;
@@ -445,6 +447,8 @@ public:
 		}
 	}
 
+	template<typename RetDel, typename ...ParamTypes> int32 registerdelegate(FString name) { return this->bindmethod(this, &UTclComponent::GenerateDelegate<RetDel, ParamTypes...>, name); }
+
 	template<typename T> struct NEW_OBJ {
 		FORCEINLINE static Tcl_Obj* MAKE(T val) {
 			static const auto cleanUpFunc = [](Tcl_Obj* obj) -> void {
@@ -536,7 +540,16 @@ public:
 		}
 	};
 
-	template<typename RetDel, typename ...ParamTypes> int32 registerdelegate(FString name) { return this->bindmethod(this, &UTclComponent::GenerateDelegate<RetDel, ParamTypes...>, name); }
+	TBaseDelegate<void, UTclComponent*> OnBeginPlay;
+
+	UPROPERTY(BlueprintAssignable, Category = Events, meta = (DisplayName = "On Begin Play"))
+	FInitializeSignature OnBeginPlayDynamic;
+
+	UPROPERTY(EditDefaultsOnly, Category = Initialization)
+	TArray<FString> IncludeScriptPaths;
+
+	UPROPERTY(EditDefaultsOnly, Category = Initialization)
+	FString MainScriptPath;
 
 	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 Eval(FString Filename, FString Code);
