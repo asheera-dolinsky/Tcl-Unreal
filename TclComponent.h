@@ -37,7 +37,6 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "TclUnrealEssentials.h"
-#include "DynamicDelegateHelper.h"
 #include "TclComponent.generated.h"
 
 
@@ -194,7 +193,6 @@ protected:
 		del.BindLambda([=](ParamTypes... params) -> void {
 			this->Fill(UTclComponent::pack(params...));
 			this->Eval(Filename, Code);
-			this->Purge();
 		});
 		return del;
 	}
@@ -539,21 +537,6 @@ public:
 	};
 
 	template<typename RetDel, typename ...ParamTypes> int32 registerdelegate(FString name) { return this->bindmethod(this, &UTclComponent::GenerateDelegate<RetDel, ParamTypes...>, name); }
-
-	template<typename Cls, typename ...ParamTypes> Cls* CreateDynamicDelegateHelper(FString Filename, FString Code) {
-		auto self = NewObject<Cls>(this, Cls::StaticClass());
-		self->initialize(this, Filename, Code);
-		return self;
-
-	}
-	template<typename Cls, typename Del> static void AddDynamicDelegateHelper(Cls* Helper, Del* Delegate) {
-		if (!(Helper == nullptr || Delegate == nullptr)) { 
-			//UE_LOG(LogClass, Error, TEXT("AddDynamicDelegateHelper: '%s' ... '%s'"), *(Helper->GetName()), *(Delegate->ToString<Cls>()))
-			//Del::FDelegate f = &Cls::Call;
-
-			Delegate->AddDynamic(Helper, &Cls::Call);
-		}
-	}
 
 	UFUNCTION(BlueprintCallable, Category = Tcl)
 	int32 Eval(FString Filename, FString Code);

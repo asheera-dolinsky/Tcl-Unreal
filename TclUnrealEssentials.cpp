@@ -69,7 +69,6 @@ int32 UTclUnrealEssentials::Eval(AActor* Actor, FString Filename, FString Code, 
 	if (comp == nullptr) { return TCL_ERROR; } else {
 		comp->Fill(Obj);
 		auto status = comp->Eval(Filename, Code);
-		comp->Purge();
 		return status;
 	}
 
