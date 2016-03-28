@@ -73,6 +73,7 @@ int UTclComponent::init() {
 	val->typePtr = &type;
 	*val = *(_Tcl_SetVar2Ex(interpreter, "NIL", nullptr, val, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
 
+	this->bindmethod<UTclComponent, AActor*>(this, &UTclComponent::GetOwner, "GetOwner");
 	this->define("Interpreter", this);
 	this->bindstatic(&UTclUnrealEssentials::PrintString, "puts");
 	this->bindconvertsafe<UObject, bool, bool>(&UObject::IsValidLowLevelFast, "IsValid");
@@ -163,12 +164,12 @@ int UTclComponent::init() {
 	this->bindstatic(&FApp::GetFixedDeltaTime, "GetFixedDeltaTime");
 	this->bindstatic(&FApp::GetDeltaTime, "GetDeltaTime");
 
-	OnBeginPlay.ExecuteIfBound(this);
-
-	for(auto path : IncludeScriptPaths) {
+	for (auto initializer : Initializers) { initializer.ExecuteIfBound(this); }
+	Initializers.Empty();
+	for (auto path : IncludeScriptPaths) {
 		if (!path.IsEmpty()) { Eval(path, ""); }
 	}
-	OnBeginPlayDynamic.Broadcast();
+	OnBeginPlay.Broadcast();
 	if (!MainScriptPath.IsEmpty()) { Eval(MainScriptPath, ""); }
 
 	return TCL_OK;

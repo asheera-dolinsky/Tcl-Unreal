@@ -99,6 +99,8 @@ protected:
 
 	Tcl_Obj* buffer = nullptr;
 
+	TArray<TBaseDelegate<void, UTclComponent*>> Initializers;
+
 	int init();
 
 	int eval(const char*);
@@ -540,10 +542,13 @@ public:
 		}
 	};
 
-	TBaseDelegate<void, UTclComponent*> OnBeginPlay;
+	TBaseDelegate<void, UTclComponent*>* AddInitializer() {
+		Initializers.AddDefaulted();
+		return &Initializers.Last();
+	}
 
-	UPROPERTY(BlueprintAssignable, Category = Events, meta = (DisplayName = "On Begin Play"))
-	FInitializeSignature OnBeginPlayDynamic;
+	UPROPERTY(BlueprintAssignable, Category = Events)
+	FInitializeSignature OnBeginPlay;
 
 	UPROPERTY(EditDefaultsOnly, Category = Initialization)
 	TArray<FString> IncludeScriptPaths;
