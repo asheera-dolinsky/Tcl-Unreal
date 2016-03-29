@@ -37,6 +37,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "TclUnrealEssentials.h"
+#include "TclDynamicDelegate.h"
 #include "TclComponent.generated.h"
 
 
@@ -450,6 +451,23 @@ public:
 	}
 
 	template<typename RetDel, typename ...ParamTypes> int32 registerdelegate(FString name) { return this->bindmethod(this, &UTclComponent::GenerateDelegate<RetDel, ParamTypes...>, name); }
+
+	template<typename T> int32 registerdynamicdelegate(FString name) {
+		return this->bindlambda(
+			static_cast<std::function<T*(FString, FString)>>([=](FString Filename, FString Code) -> T* {
+			auto helper = NewObject<T>();
+			helper->Initialize(this, Filename, Code);
+			return helper;
+		}),
+			name);
+	}
+	template<typename DelegateType, typename HelperType, typename... ParamTypes> int32 registerdynamicdelegateadder(FString name) {
+		return this->bindlambda(
+			static_cast<std::function<void(DelegateType*, HelperType*)>>([=](DelegateType* Delegate, HelperType* Helper) -> void {
+			if (!(Delegate == nullptr || Helper == nullptr)) { Delegate->AddDynamic(Helper, &HelperType::Call); }
+		}),
+			name);
+	}
 
 	template<typename T> struct NEW_OBJ {
 		FORCEINLINE static Tcl_Obj* MAKE(T val) {
