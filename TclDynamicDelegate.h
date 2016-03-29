@@ -31,7 +31,7 @@
 UCLASS() class PHANTOMGUNSDEMO_API UTclDynamicDelegate : public UObject {
 	GENERATED_BODY()
 private:
-	UTclComponent* Self;
+	UTclComponent* Self = nullptr;
 	FString Filename;
 	FString Code;
 protected:
@@ -41,4 +41,8 @@ protected:
 	}
 public:
 	void Initialize(UTclComponent* Self, FString Filename, FString Code);
+	
+	UFUNCTION()
+	void Call();
+
 };

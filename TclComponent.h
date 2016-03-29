@@ -51,9 +51,7 @@ template<int numberOfParams> struct COMPILE_ON_PARAMS {
 	}
 };
 template<> struct COMPILE_ON_PARAMS<0> {
-	template<typename TupleSpecialization> FORCEINLINE static bool EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) {
-		return true;
-	}
+	template<typename TupleSpecialization> FORCEINLINE static bool EXEC(Tcl_Interp* interpreter, Tcl_Obj* const arguments[], TupleSpecialization& values) { return true; }
 };
 
 template<typename> struct IS_TARRAY : std::false_type { static const bool OF_UOBJECTS = false; };
@@ -193,6 +191,23 @@ protected:
 			}
 		}
 	};
+
+	template<int len> struct PACK {
+		template<typename ...ParamTypes> FORCEINLINE static Tcl_Obj* IMPL(ParamTypes... args) {
+			if (handleIsMissing()) { return nullptr; }
+			else {
+				TArray<Tcl_Obj*> collector;
+				collect<ParamTypes...>(&collector, args...);
+				const Tcl_Obj* arguments[len];
+				for (int i = 0; i < len; i++) { arguments[i] = collector[i]; }
+				return get_Tcl_NewListObj()(len, static_cast<ClientData>(arguments));
+			}
+		}
+	};
+	template<> struct PACK<0> {
+		template<typename ...ParamTypes> FORCEINLINE static Tcl_Obj* IMPL(ParamTypes... args) { return nullptr; }
+	};
+
 	template<typename RetDel, typename ...ParamTypes> FORCEINLINE RetDel GenerateDelegate(FString Filename, FString Code) {
 		RetDel del;
 		del.BindLambda([=](ParamTypes... params) -> void {
@@ -236,16 +251,7 @@ public:
 		data = nullptr; 
 	}
 
-	template<typename ...ParamTypes> static Tcl_Obj* pack(ParamTypes... args) {
-		if (handleIsMissing()) { return nullptr; } else {
-			TArray<Tcl_Obj*> collector;
-			collect<ParamTypes...>(&collector, args...);
-			const auto len = sizeof...(ParamTypes);
-			const Tcl_Obj* arguments[len];
-			for(int i = 0; i < len; i++) { arguments[i] = collector[i]; }
-			return _Tcl_NewListObj(len, static_cast<ClientData>(arguments));
-		}
-	}
+	template<typename ...ParamTypes> static Tcl_Obj* pack(ParamTypes... args) { return PACK<sizeof...(ParamTypes)>::IMPL<ParamTypes...>(args...); }
 	template<typename P> static Tcl_Obj* convert(TArray<P> arr) {
 		if (handleIsMissing()) { return nullptr; } else {
 			const auto len = arr.Num();

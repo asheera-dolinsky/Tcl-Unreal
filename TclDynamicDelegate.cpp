@@ -33,3 +33,5 @@ void UTclDynamicDelegate::Initialize(UTclComponent* Self, FString Filename, FStr
 		this->Code = Code;
 	}
 }
+
+void UTclDynamicDelegate::Call() { Self->Eval(Filename, Code); }
